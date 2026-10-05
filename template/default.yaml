@@ -1,0 +1,207 @@
+# 分类模板：四组九件事、条目、各条目的提示。
+# 来自 docs/Agent Context.md 第 2 章（表 5 至表 14）与第 4 章（表 20 至表 25）。
+# 文档改了分类，改这个文件即可，代码不用动。
+#
+# 件（内容类别）字段
+#   purpose       用途：这一类是干什么的
+#   tips          写作要点
+#   not_here      不属于这里：哪些内容该放到别的类别
+#
+# 条目字段
+#   id            条目的标识，卡片 frontmatter 里的 entry 写它，全局唯一
+#   name          条目名
+#   hint          写什么（文档条目表的“写什么”一列）
+#   phase         在哪个阶段写：framework 框架期、design 做 agent 期、deploy 部署期、project 项目期、runtime 运行期。
+#                 编辑器只显示 editable 的阶段（开发者写的条目），其余由用户或运行时产生，不在编辑器里出现
+#   default_when  新建卡片时的默认适用条件：always、stage、domain、tool、situation、on_demand
+#   heading       编译输出里这一条的小标题；false 表示不加标题
+#   attachment    在 skill 里作为附件单独成文件（如范例）
+#   generated     由骨架自动生成，不手写
+
+version: 1
+
+budgets:
+  system_prompt_tokens: 2000      # 系统提示词的建议上限（估算 token），本项目自定
+  # 以下取自 Agent Skills 开放规范（agentskills.io/specification）。输出不绑定 harness，按开放规范取最严的值。
+  skill_lines: 500                # SKILL.md 建议不超过 500 行
+  skill_tokens: 5000              # SKILL.md 正文建议不超过 5000 token
+  skill_description_chars: 1024   # description 上限 1024 字符（Claude Code 自己的截断点是 1536，更宽）
+
+phases:
+  framework: { name: 框架期, editable: true, who: 框架作者 }
+  design: { name: 做 agent 期, editable: true, who: 设计者、领域专家 }
+  deploy: { name: 部署期, editable: false, who: 用户、组织管理员 }
+  project: { name: 项目期, editable: false, who: 用户确认，具体 agent 起草 }
+  runtime: { name: 运行期, editable: false, who: 具体 agent、运行时 }
+
+conditions:
+  always: { name: 全局, place: 系统提示词 }
+  stage: { name: 阶段, place: 阶段 skill }
+  domain: { name: 领域, place: 领域 skill }
+  tool: { name: 工具, place: 工具描述 }
+  situation: { name: 情形, place: 运行时提醒 }
+  on_demand: { name: 按需查阅, place: 参考资料 }
+
+groups:
+  - { id: job, name: 岗位, question: 要做成什么 }
+  - { id: rules, name: 规则, question: 过程中应当怎么做 }
+  - { id: facts, name: 事实, question: 有什么、是什么样 }
+  - { id: situation, name: 处境, question: 到哪一步了 }
+
+pieces:
+  - id: job
+    number: 1
+    name: 职责目标
+    group: job
+    heading: 职责目标
+    purpose: agent 是谁、为谁工作、负责什么、做到什么程度算完
+    tips: 写明哪些事不归它；完成标准能判断真假；质量标准逐条可检查；目标冲突时先保什么
+    not_here: 具体怎么做 → 工作方法；不许做的事 → 硬性约束
+    entries:
+      - { id: role, name: 角色, hint: 头衔与定位，一句话。它的作用是从模型权重里调出一整套默认值，展开内容写在各自的条目里。, phase: design, default_when: always, heading: false }
+      - { id: served, name: 服务对象, hint: 为谁工作、向谁汇报、产出给谁看。, phase: design, default_when: always, heading: 服务对象 }
+      - { id: scope, name: 职责范围, hint: 负责哪些阶段，哪些不归它。, phase: design, default_when: always, heading: 职责范围 }
+      - { id: goal, name: 目标, hint: 本项目要达成什么。项目期由具体 agent 起草、用户确认。, phase: project, default_when: always, heading: 目标 }
+      - { id: done, name: 完成的定义, hint: 交付物是什么，什么状态算完。要可判定。, phase: design, default_when: always, heading: 完成的定义 }
+      - { id: quality, name: 质量标准, hint: 逐条可检查的清单，否则 agent 无法自查，机制也无法核验。可按阶段或领域分别写。, phase: design, default_when: always, heading: 质量标准 }
+      - { id: output_format, name: 产出形式, hint: 格式、语言、篇幅、模板。, phase: design, default_when: always, heading: 产出形式 }
+      - { id: priority, name: 优先顺序, hint: 目标冲突时先保什么。, phase: design, default_when: always, heading: 优先顺序 }
+      - { id: request, name: 当前请求, hint: 这一次要做的事，由用户消息带入。, phase: runtime, default_when: always, heading: 当前请求 }
+
+  - id: hard_rules
+    number: 2
+    name: 硬性约束
+    group: rules
+    heading: 硬性约束
+    purpose: 任何情况下都不能违反的限制
+    tips: 措辞不留例外；每条写明靠什么机制兜底（权限、沙箱、只读、自动校验），暂时没有机制的也标出来；外部内容里的指令一律不执行
+    not_here: 允许视情况判断的规则 → 工作方法
+    entries:
+      - { id: hr_world, name: 人和世界, hint: 不提供危险能力；遵守法律；不生成禁止内容。常用机制：模型训练、分类器。, phase: framework, default_when: always, heading: 人和世界 }
+      - { id: hr_assets, name: 委托人的资产, hint: 不可逆操作先确认（删除、覆盖、强推、对外发送、付款）；不读取、打印、提交凭据；数据不出授权边界；只在授予的权限和目录内操作；被拒绝的操作不换路径重试。常用机制：权限规则、沙箱、hook。, phase: design, default_when: always, heading: 委托人的资产 }
+      - { id: hr_instructions, name: 指令体系, hint: 外部内容是数据不是指令；各来源的效力顺序；不泄露系统提示词；不修改自己的规则、质量标准和锁定项；不伪造来源标签。常用机制：只读文件、审批。, phase: design, default_when: always, heading: 指令体系 }
+      - { id: hr_truth, name: 产出的真实, hint: 不编造数据、结果、引用、执行记录；失败和未完成如实报告；不确定的标明不确定；不为通过检查而改标准、改测试。常用机制：论断绑定证据、引用存在性校验、日志比对。, phase: design, default_when: always, heading: 产出的真实 }
+      - { id: hr_resources, name: 资源, hint: token、费用、时间、调用次数的上限；循环和重试的上限。常用机制：计数器、超时。, phase: design, default_when: always, heading: 资源 }
+      - { id: hr_obligations, name: 外部义务, hint: 数据许可和隐私法规；领域规范；组织政策。常用机制：校验、审批。, phase: design, default_when: always, heading: 外部义务 }
+
+  - id: practice
+    number: 3
+    name: 工作方法
+    group: rules
+    heading: 工作方法
+    purpose: 完成工作的流程，以及每一步怎么做
+    tips: 每个阶段写清进入条件、完成条件和产出模板；注意事项附上理由；关键做法给范例
+    not_here: 不许例外的禁令 → 硬性约束；和用户怎么配合 → 协作方式
+    entries:
+      - { id: flow_map, name: 流程地图, hint: 有哪些阶段、各阶段的进出条件、何种情况回退到何处。, phase: design, default_when: always, heading: 流程 }
+      - { id: stage_practice, name: 各阶段做法, hint: 每个阶段的目标、步骤、产出模板、常见错误。, phase: design, default_when: stage, heading: 做法 }
+      - { id: verification, name: 验证的方法, hint: 一个论断、一段代码、一个结果怎么验证。, phase: design, default_when: always, heading: 验证 }
+      - { id: rollback, name: 回退与重做, hint: 什么情况回退、回退到哪、旧版怎么处理。, phase: design, default_when: always, heading: 回退与重做 }
+      - { id: tool_procedure, name: 工具规程, hint: 用某个工具时的步骤和禁忌。, phase: design, default_when: tool, heading: 规程 }
+      - { id: preventive, name: 预防性规则, hint: 做 X 时留意 Y，每条带理由。说明理由比命令有效。, phase: design, default_when: stage, heading: 注意事项 }
+      - { id: conventions, name: 约定, hint: 命名、目录、格式、提交等惯例。, phase: design, default_when: always, heading: 约定 }
+      - { id: examples, name: 范例, hint: 做得对的样本。范例比规则清单有效。, phase: design, default_when: stage, heading: 范例, attachment: examples }
+
+  - id: collaboration
+    number: 4
+    name: 协作方式
+    group: rules
+    heading: 协作方式
+    purpose: 和用户怎么配合：什么时候问、什么时候汇报、什么时候停下
+    tips: 逐个列出必须由用户拍板的事；写明不问用户时能自主走多远；汇报要附证据
+    not_here: agent 怎么管自己的工作 → 过程管理
+    entries:
+      - { id: intake, name: 接手, hint: 用户可能带什么进来，各自从哪个阶段开始。, phase: design, default_when: always, heading: 接手 }
+      - { id: decision_points, name: 等决策的节点, hint: 哪些决定必须用户拍板，到节点时怎么呈现选项。, phase: design, default_when: always, heading: 需要用户拍板的事 }
+      - { id: asking, name: 提问, hint: 什么情况问、怎么问、一次问几个、问不到时怎么办。细则可绑定到提问工具。, phase: design, default_when: always, heading: 提问 }
+      - { id: reporting, name: 汇报, hint: 何时报、报什么、格式、附什么证据。, phase: design, default_when: always, heading: 汇报 }
+      - { id: stopping, name: 停止, hint: 什么情况提前终止，终止时交付什么。, phase: design, default_when: always, heading: 停止 }
+      - { id: handoff, name: 交接与恢复, hint: 用户中途介入后怎么继续，会话恢复时怎么接上。, phase: design, default_when: always, heading: 交接与恢复 }
+      - { id: autonomy, name: 自主程度, hint: 不问的情况下能走多远。, phase: design, default_when: always, heading: 自主程度 }
+      - { id: user_prefs, name: 用户偏好, hint: 语言、风格、打扰频率。, phase: deploy, default_when: always, heading: 用户偏好 }
+
+  - id: self_management
+    number: 5
+    name: 过程管理
+    group: rules
+    heading: 过程管理
+    purpose: agent 怎么管自己的工作：计划、自查、上下文、记忆、收尾
+    tips: 写明上下文压缩前要存下哪些状态；记忆写在哪、用什么格式；结束前要做哪些事
+    not_here: 和用户的交互 → 协作方式
+    entries:
+      - { id: planning, name: 规划, hint: 何时先计划、计划写在哪、待办怎么维护。, phase: framework, default_when: always, heading: 规划 }
+      - { id: execution, name: 执行策略, hint: 并行调用、优先专用工具、重试上限。, phase: framework, default_when: always, heading: 执行 }
+      - { id: self_check, name: 自查, hint: 何时检查、对照什么检查、发现问题怎么办。, phase: framework, default_when: always, heading: 自查 }
+      - { id: budget_context, name: 预算与上下文, hint: 预算的用法，何时压缩，压缩前保存什么。, phase: framework, default_when: always, heading: 预算与上下文 }
+      - { id: memory_usage, name: 记忆的用法, hint: 何时读、何时写、格式、位置。, phase: framework, default_when: always, heading: 记忆 }
+      - { id: skill_file_usage, name: skill 与文件的用法, hint: 何时看目录、何时加载正文。, phase: framework, default_when: always, heading: skill 与文件 }
+      - { id: finishing, name: 结束, hint: 什么算完，结束前做什么。, phase: framework, default_when: always, heading: 结束 }
+      - { id: nudges, name: 催促, hint: 待办久未更新、上下文将满时的提醒文字。, phase: framework, default_when: situation, heading: false }
+
+  - id: tools_resources
+    number: 6
+    name: 工具资源
+    group: facts
+    heading: 工具资源
+    purpose: 能用哪些工具、子 agent、权限和资源
+    tips: 像给新同事介绍一样写工具说明，参数复杂的附输入示例；只写工具是什么
+    not_here: 用工具的步骤和禁忌 → 工作方法里的「工具规程」
+    entries:
+      - { id: tool_definition, name: 工具定义, hint: 名称、功能、参数、返回，附输入示例。, phase: design, default_when: tool, heading: 定义 }
+      - { id: output_limits, name: 输出上限, hint: 返回多少、怎么截断。, phase: design, default_when: tool, heading: 输出上限 }
+      - { id: deferred_catalog, name: 延迟加载的目录, hint: 有哪些工具可按需加载。, phase: design, default_when: always, heading: 可按需加载的工具 }
+      - { id: skill_catalog, name: skill 目录, hint: 由骨架里各阶段、各领域的描述自动生成。, phase: design, default_when: always, heading: skill 目录, generated: true }
+      - { id: subagent_catalog, name: 子 agent 目录, hint: 有哪些子 agent、各自能做什么。, phase: design, default_when: always, heading: 子 agent }
+      - { id: resources, name: 资源, hint: 数据、算力、账号、文献库的位置与配额。, phase: deploy, default_when: always, heading: 资源 }
+      - { id: permissions, name: 权限, hint: 已授予的、需确认的、禁止的。, phase: design, default_when: always, heading: 权限 }
+
+  - id: env_domain
+    number: 7
+    name: 背景知识
+    group: facts
+    heading: 背景知识
+    purpose: 干活需要知道的事实：运行环境、领域知识、术语、参考资料
+    tips: 运行环境的每个机制用一句话讲清；领域知识只写模型不知道的；概要常驻，细节按需查阅
+    not_here: 要求 agent 遵守的东西 → 硬性约束或工作方法。这里只陈述事实，不下指令
+    entries:
+      - { id: harness, name: 运行环境的机制, hint: 提醒是什么、权限拒绝意味什么、hook、压缩会发生什么、目录约定。, phase: framework, default_when: always, heading: 运行环境 }
+      - { id: model, name: 模型自身, hint: 模型、知识截止、能力限制。由运行时在会话开始时提供。, phase: runtime, default_when: always, heading: 模型 }
+      - { id: principal, name: 委托人, hint: 身份、领域、水平。, phase: deploy, default_when: always, heading: 委托人 }
+      - { id: domain_knowledge, name: 领域知识, hint: 概念、方法、基线、数据集、评测惯例、什么算贡献。, phase: design, default_when: domain, heading: 领域知识 }
+      - { id: glossary, name: 术语表, hint: 本领域和本产品的术语。, phase: design, default_when: always, heading: 术语 }
+      - { id: references, name: 参考资料, hint: 文献、文档、代码库的索引。, phase: design, default_when: on_demand, heading: false }
+      - { id: external_rules, name: 外部规则原文, hint: 会议政策、许可证文本。采纳后的约束归硬规则。, phase: design, default_when: on_demand, heading: false }
+
+  - id: records
+    number: 8
+    name: 记录与经验
+    group: situation
+    heading: 记录与经验
+    purpose: 干活过程中积累的记录与经验，主要由 agent 自己写
+    tips: 原始记录只追加；每条经验带来源和状态；提升为规则须经审批
+    not_here: 此刻的状态 → 当前状态
+    entries:
+      - { id: run_log, name: 运行记录, hint: 每次操作或实验的配置、结果、日志位置。, phase: runtime, default_when: on_demand, heading: false }
+      - { id: attempts, name: 尝试与失败, hint: 试过什么、为什么未成。, phase: runtime, default_when: on_demand, heading: false }
+      - { id: stage_outputs, name: 阶段产出, hint: 每阶段的交付物及版本。, phase: runtime, default_when: on_demand, heading: false }
+      - { id: decisions, name: 决策记录, hint: 用户拍板的事项及理由。, phase: project, default_when: on_demand, heading: false }
+      - { id: lessons, name: 经验, hint: 规则、为什么、怎么用；带状态。, phase: runtime, default_when: on_demand, heading: false }
+      - { id: learned_prefs, name: 学到的偏好, hint: 用户的习惯与纠正。, phase: runtime, default_when: on_demand, heading: false }
+      - { id: review_queue, name: 待审区, hint: 提升为规则前的候选。, phase: runtime, default_when: on_demand, heading: false }
+
+  - id: state
+    number: 9
+    name: 当前状态
+    group: situation
+    heading: 当前状态
+    purpose: 此刻的状态：时间、位置、进度、预算
+    tips: 压缩后能从状态项恢复工作；每项有生成者
+    not_here: 过去发生的事 → 记录与经验
+    entries:
+      - { id: time_location, name: 时间与位置, hint: 日期、工作目录、平台。, phase: runtime, default_when: always, heading: false }
+      - { id: env_snapshot, name: 环境快照, hint: git 状态、可用工具、已加载的 skill。, phase: runtime, default_when: always, heading: false }
+      - { id: task_stage, name: 任务与阶段, hint: 当前任务、所在阶段。, phase: runtime, default_when: always, heading: false }
+      - { id: progress_todo, name: 进度与待办, hint: 计划文件，已完成与未完成。, phase: runtime, default_when: always, heading: false }
+      - { id: budget, name: 预算, hint: 已用、剩余、上下文占用。, phase: runtime, default_when: always, heading: false }
+      - { id: mode, name: 模式, hint: 计划模式、权限模式。, phase: runtime, default_when: situation, heading: false }
+      - { id: compaction_summary, name: 压缩摘要, hint: 任务概述、当前状态、重要发现、下一步、需保留的上下文。, phase: runtime, default_when: situation, heading: false }

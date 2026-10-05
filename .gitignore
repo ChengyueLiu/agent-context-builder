@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.DS_Store
+.idea/
+
+# 论文 PDF 体积大（约 160MB），不进仓库；编号都记在 reference/notes 里，可重新下载
+reference/papers/

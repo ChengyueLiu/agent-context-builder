@@ -1,0 +1,150 @@
+agent: 自动化科研 Agent
+description: 辅助科研人员完成研究，从调研定位到论文初稿，目标是有丰富发表经验的博士后水平。
+note: 本目录由 agent-context-builder 编译生成，不要手改。改 context/ 里的卡片后重新编译。
+system_prompt:
+  file: system-prompt.md
+  load: always
+  tokens: 2264
+skills:
+  - name: stage-survey
+    kind: stage
+    title: 调研定位
+    description: 进入调研定位阶段时加载：检索相关工作，整理相关工作表，提出候选研究问题。
+    file: skills/stage-survey/SKILL.md
+    load: on_trigger
+  - name: stage-experiment-design
+    kind: stage
+    title: 实验设计
+    description: 进入实验设计阶段时加载：把论断清单变成实验方案，跑之前定下支撑与不支撑的标准。
+    file: skills/stage-experiment-design/SKILL.md
+    attachments:
+      - skills/stage-experiment-design/examples.md
+    load: on_trigger
+  - name: stage-writing
+    kind: stage
+    title: 论文写作
+    description: 进入论文写作阶段时加载：把论断和证据写成论文初稿。
+    file: skills/stage-writing/SKILL.md
+    load: on_trigger
+  - name: domain-ml
+    kind: domain
+    title: 机器学习
+    description: 研究属于机器学习领域时加载：常用基准与指标、主要会议、什么算贡献、领域内容易犯的错误。
+    file: skills/domain-ml/SKILL.md
+    load: on_trigger
+tools:
+  - id: literature_search
+    name: 文献检索
+    file: tools/literature_search.md
+    load: with_tool
+  - id: run_experiment
+    name: 实验运行
+    file: tools/run_experiment.md
+    load: with_tool
+  - id: ask_user
+    name: 提问
+    file: tools/ask_user.md
+    load: with_tool
+reminders:
+  - id: todo_stale
+    name: 待办久未更新
+    trigger: 待办清单连续 10 轮没有更新时触发。
+    file: reminders/todo_stale.md
+    load: on_situation
+  - id: context_full
+    name: 上下文将满
+    trigger: 上下文占用超过 80% 时触发。
+    file: reminders/context_full.md
+    load: on_situation
+  - id: budget_low
+    name: 预算将尽
+    trigger: 已用预算超过 80% 时触发。
+    file: reminders/budget_low.md
+    load: on_situation
+files:
+  index:
+    file: files/INDEX.md
+    load: always
+  items:
+    - file: files/科研写作指南.md
+      title: 科研写作指南
+      load: on_demand
+mechanisms: mechanisms.md
+sources:
+  system-prompt.md:
+    - context/1-job/role.md
+    - context/1-job/served.md
+    - context/1-job/scope.md
+    - context/1-job/done.md
+    - context/1-job/quality.md
+    - context/1-job/output_format.md
+    - context/1-job/priority.md
+    - context/2-hard_rules/hr_world.md
+    - context/2-hard_rules/hr_assets.md
+    - context/2-hard_rules/hr_instructions.md
+    - context/2-hard_rules/hr_truth.md
+    - context/2-hard_rules/hr_resources.md
+    - context/2-hard_rules/hr_obligations.md
+    - context/3-practice/flow_map.md
+    - context/3-practice/verification.md
+    - context/3-practice/rollback.md
+    - context/3-practice/conventions.md
+    - context/4-collaboration/intake.md
+    - context/4-collaboration/decision_points.md
+    - context/4-collaboration/reporting.md
+    - context/4-collaboration/stopping.md
+    - context/4-collaboration/handoff.md
+    - context/4-collaboration/autonomy.md
+    - context/5-self_management/planning.md
+    - context/5-self_management/execution.md
+    - context/5-self_management/self_check.md
+    - context/5-self_management/budget_context.md
+    - context/5-self_management/memory_usage.md
+    - context/5-self_management/skill_file_usage.md
+    - context/5-self_management/finishing.md
+    - context/6-tools_resources/subagent_catalog.md
+    - context/6-tools_resources/permissions.md
+    - context/7-env_domain/harness.md
+    - context/7-env_domain/glossary.md
+  skills/stage-survey/SKILL.md:
+    - context/3-practice/stage_practice.stage-survey.md
+  skills/stage-experiment-design/examples.md:
+    - context/3-practice/examples.stage-experiment-design.md
+  skills/stage-experiment-design/SKILL.md:
+    - context/1-job/quality.stage-experiment-design.md
+    - context/3-practice/stage_practice.stage-experiment-design.md
+    - context/3-practice/preventive.stage-experiment-design.md
+  skills/stage-writing/SKILL.md:
+    - context/1-job/quality.stage-writing.md
+    - context/3-practice/stage_practice.stage-writing.md
+  skills/domain-ml/SKILL.md:
+    - context/3-practice/preventive.domain-ml.md
+    - context/7-env_domain/domain_knowledge.domain-ml.md
+  tools/literature_search.md:
+    - context/6-tools_resources/tool_definition.tool-literature_search.md
+    - context/6-tools_resources/output_limits.tool-literature_search.md
+    - context/3-practice/tool_procedure.tool-literature_search.md
+  tools/run_experiment.md:
+    - context/6-tools_resources/tool_definition.tool-run_experiment.md
+    - context/6-tools_resources/output_limits.tool-run_experiment.md
+    - context/3-practice/tool_procedure.tool-run_experiment.md
+  tools/ask_user.md:
+    - context/6-tools_resources/tool_definition.tool-ask_user.md
+    - context/4-collaboration/asking.tool-ask_user.md
+  reminders/todo_stale.md:
+    - context/5-self_management/nudges.situation-todo_stale.md
+  reminders/context_full.md:
+    - context/5-self_management/nudges.situation-context_full.md
+  reminders/budget_low.md:
+    - context/5-self_management/nudges.situation-budget_low.md
+  files/科研写作指南.md:
+    - context/7-env_domain/references.on-demand.md
+  files/INDEX.md:
+    - context/7-env_domain/references.on-demand.md
+  mechanisms.md:
+    - context/2-hard_rules/hr_world.md
+    - context/2-hard_rules/hr_assets.md
+    - context/2-hard_rules/hr_instructions.md
+    - context/2-hard_rules/hr_truth.md
+    - context/2-hard_rules/hr_resources.md
+    - context/2-hard_rules/hr_obligations.md

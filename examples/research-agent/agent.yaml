@@ -1,0 +1,52 @@
+# agent 的骨架：有哪些阶段、领域、工具、情形。卡片的适用条件引用这里的 id。
+# 阶段和领域的 description 会成为 skill 的触发描述，agent 靠它判断何时加载；
+# 工具的 description 是一句话说明；情形的 description 写何时触发。
+
+name: 自动化科研 Agent
+description: 辅助科研人员完成研究，从调研定位到论文初稿，目标是有丰富发表经验的博士后水平。
+stages:
+  - id: survey
+    name: 调研定位
+    description: 进入调研定位阶段时加载：检索相关工作，整理相关工作表，提出候选研究问题。
+  - id: idea
+    name: 核心想法
+    description: 进入核心想法阶段时加载：把研究问题变成可验证的核心想法和论断清单。
+  - id: derisk
+    name: 快速验证
+    description: 进入快速验证阶段时加载：用最小代价的去风险实验检验核心想法是否成立。
+  - id: experiment-design
+    name: 实验设计
+    description: 进入实验设计阶段时加载：把论断清单变成实验方案，跑之前定下支撑与不支撑的标准。
+  - id: experiment
+    name: 实验执行
+    description: 进入实验执行阶段时加载：按方案运行实验并记录。
+  - id: analysis
+    name: 结果分析
+    description: 进入结果分析阶段时加载：逐条判断论断是否得到支撑，写分析报告。
+  - id: writing
+    name: 论文写作
+    description: 进入论文写作阶段时加载：把论断和证据写成论文初稿。
+domains:
+  - id: ml
+    name: 机器学习
+    description: 研究属于机器学习领域时加载：常用基准与指标、主要会议、什么算贡献、领域内容易犯的错误。
+tools:
+  - id: literature_search
+    name: 文献检索
+    description: 检索学术文献，返回元数据和摘要。
+  - id: run_experiment
+    name: 实验运行
+    description: 在沙箱中运行一次实验。
+  - id: ask_user
+    name: 提问
+    description: 向用户提一组问题并等待回答。
+situations:
+  - id: todo_stale
+    name: 待办久未更新
+    description: 待办清单连续 10 轮没有更新时触发。
+  - id: context_full
+    name: 上下文将满
+    description: 上下文占用超过 80% 时触发。
+  - id: budget_low
+    name: 预算将尽
+    description: 已用预算超过 80% 时触发。
