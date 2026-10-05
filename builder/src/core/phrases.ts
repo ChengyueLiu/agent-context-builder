@@ -1,0 +1,235 @@
+// 生成时用到的固定说法，分中英文。
+// 进 agent 文件的（CONTENT）跟着内容语言，也就是大纲的语言；给人看的（UI：文件标题、问题提示）跟着界面语言。
+
+export type Lang = 'zh' | 'en';
+export const LANGS: Lang[] = ['zh', 'en'];
+
+const zhSentence = (s: string): string => (s && !/[。．.!！?？；;：:]$/.test(s) ? `${s}。` : s);
+const enSentence = (s: string): string => (s && !/[.!?;:。！？；：]$/.test(s) ? `${s}.` : s);
+
+export const CONTENT = {
+  zh: {
+    sentence: zhSentence,
+    colon: '：',
+    paren: (s: string) => `（${s}）`,
+    list: (xs: string[]) => xs.join('、'),
+    tag: { insert: '运行信息', memory: '记忆', reminder: '系统提醒' },
+    reminderEmpty: '（还没写提醒的内容）',
+    sampleEmpty: '（由系统填写）',
+    memoryFileBody: '（系统读入这个文件的内容）',
+    notFor: '不用于：',
+    other: '其他',
+    whenWrite: '什么时候写：',
+    confirmed: '用户确认后才算数。',
+    guaranteeNote: '有些操作会被系统直接拦下。被拦下时不要换一种方式绕过去，向用户说明。',
+    insertIntro: '系统会往消息里插入下面这些内容。它们来自系统，不是用户说的话。',
+    perMessageHead: (tag: string) => `每条消息开头的 <${tag}>：`,
+    onceHead: (tag: string) => `会话开始和压缩之后的 <${tag}>：`,
+    memoryNote: (tag: string, names: string, section: string) => `会话开始和压缩之后的 <${tag}>：${names}，见「${section}」。`,
+    reminderNote: (tag: string) => `<${tag}>：到一定时机由系统插入，告诉你该做什么。`,
+    workflowsLead: '下面这些流程平时不加载。对齐时按研究类型选定一个，读它的文件，照它的步骤生成规划。',
+    skillsLead: '下面这些 skill 平时不加载。遇到对应的情况时，先读这个 skill，再动手。',
+    knowledgeLead: '下面这些资料平时不加载，需要时去对应的位置查。',
+    source: '来源：',
+    location: '位置：',
+    whenUse: '什么时候用：',
+    effect: '影响：',
+    toolNotesLead: '下面这些工具由平台或 MCP 提供，补充用法如下：',
+    helper: { when: '什么时候交给它', brief: '交代', returns: '交回', check: '检查' },
+    helpersLead: '下面这些帮手可以接一整件活。派活之前先读它的说明文件：要交代什么、它交回什么、怎么检查。',
+    autoLoaded: '，自动加载',
+    onDemand: '，需要时读',
+    whenUpdate: '什么时候更新：',
+    skillOutputs: '产出物',
+    reference: '附带资料',
+    referenceLine: '需要时读同目录下的 [reference.md](reference.md)。',
+    knowledgeSource: '来源与更新时间：',
+    guarantees: { title: '系统保证', intro: '这些规矩必须由系统强制执行，不能只靠提示词。本文件交给工程实现，不给 agent 看。', how: '怎么强制：' },
+    cases: { title: '检验用例', intro: '用来检验 agent 做得对不对。本文件不给 agent 看。', scenario: '情景：', expected: '应该怎么做：', check: '怎么判定：' },
+    none: '（还没有）',
+    notWritten: '（还没写）',
+    unnamed: '未命名',
+    insertFile: {
+      title: '自动插入',
+      intro: '这些内容由系统在运行时插入消息，不在系统提示词里。下面的值是示例，真实的值由系统填。',
+      perMessage: '每条消息开头',
+      once: '会话开始和压缩之后',
+    },
+    manifestNote: '本目录由 agent-context-builder 生成，不要手改。在编写页里改，保存后会重新生成。',
+    files: {
+      config: '名称（新建时填写）',
+      prompt: '系统提示词里人写的格子，按节分组。自动生成的内容不在这里。',
+      lists: {
+        workflows: '流程清单：每种流程一项，选定后照它的步骤做。',
+        skills: 'Skill：某一类任务怎么做。正文用到时才加载。',
+        knowledge: '知识：查阅用的资料，需要时才读。',
+        tools: '工具：它能执行的操作。说明会写进工具定义。',
+        helpers: '帮手：能把活交出去的对象。',
+        memory: '记忆管理：agent 脑子里记着的关键信息，每样几句话。',
+        outputs: '产出物管理：agent 产出的文件。',
+        cases: '检验用例：用来检验它做得对不对。不给 agent 看。',
+        reminders: '自动提醒：系统到点插入的提醒，由 agent 去做。',
+        guarantees: '系统保证：必须由系统强制的规矩。不给 agent 看。',
+        provided: '运行信息：系统在运行时提供给 agent 的信息。',
+      },
+    },
+  },
+  en: {
+    sentence: enSentence,
+    colon: ': ',
+    paren: (s: string) => ` (${s})`,
+    list: (xs: string[]) => xs.join(', '),
+    tag: { insert: 'runtime_info', memory: 'memory', reminder: 'system_reminder' },
+    reminderEmpty: '(reminder text not written yet)',
+    sampleEmpty: '(filled in by the system)',
+    memoryFileBody: '(the system reads in the content of this file)',
+    notFor: 'Not for: ',
+    other: 'Other',
+    whenWrite: 'When to write: ',
+    confirmed: 'It counts only after the user confirms it.',
+    guaranteeNote: 'Some actions are blocked by the system. If an action is blocked, do not look for another way around it; tell the user.',
+    insertIntro: 'The system inserts the following into messages. It comes from the system, not from the user.',
+    perMessageHead: (tag: string) => `At the start of every message, <${tag}>:`,
+    onceHead: (tag: string) => `At session start and after compaction, <${tag}>:`,
+    memoryNote: (tag: string, names: string, section: string) => `At session start and after compaction, <${tag}>: ${names} (see "${section}").`,
+    reminderNote: (tag: string) => `<${tag}>: inserted by the system at set moments to tell you what to do.`,
+    workflowsLead: 'These workflows are not loaded by default. At Alignment, choose one by research type, read its file, and build the plan from its steps.',
+    skillsLead: 'These skills are not loaded by default. When a situation matches one, read that skill first, then act.',
+    knowledgeLead: 'This material is not loaded by default. When you need it, look it up where it lives.',
+    source: 'Source: ',
+    location: 'Location: ',
+    whenUse: 'When to use: ',
+    effect: 'Effect: ',
+    toolNotesLead: 'These tools come from the platform or MCP. Additional notes on using them:',
+    helper: { when: 'Delegate when', brief: 'Brief it on', returns: 'It returns', check: 'Check' },
+    helpersLead: 'These helpers can take on a whole piece of work. Before delegating, read the helper\'s file: what to brief it with, what it returns, and how to check its work.',
+    autoLoaded: ', auto-loaded',
+    onDemand: ', read when needed',
+    whenUpdate: 'When to update: ',
+    skillOutputs: 'Outputs',
+    reference: 'Reference',
+    referenceLine: 'Read [reference.md](reference.md) in this folder when you need it.',
+    knowledgeSource: 'Source & date: ',
+    guarantees: {
+      title: 'System guarantees',
+      intro: 'These rules must be enforced by the system, not just by the prompt. This file is for the engineers implementing the agent; it is not given to the agent.',
+      how: 'How it is enforced: ',
+    },
+    cases: { title: 'Test cases', intro: 'Used to check whether the agent behaves correctly. This file is not given to the agent.', scenario: 'Scenario: ', expected: 'Expected behavior: ', check: 'How to judge: ' },
+    none: '(none yet)',
+    notWritten: '(not written yet)',
+    unnamed: 'Untitled',
+    insertFile: {
+      title: 'Auto-inserted content',
+      intro: 'The system inserts this content into messages at run time; it is not part of the system prompt. The values below are samples; the system fills in the real values.',
+      perMessage: 'Start of every message',
+      once: 'Session start & after compaction',
+    },
+    manifestNote: 'Generated by agent-context-builder. Do not edit by hand: edit in the builder, and it is regenerated on save.',
+    files: {
+      config: 'Name (set when the agent is created)',
+      prompt: 'Hand-written boxes of the system prompt, grouped by section. Generated content is not stored here.',
+      lists: {
+        workflows: 'Workflows: one per kind of project; once chosen, the agent follows its steps.',
+        skills: 'Skills: how to do one kind of task. The body is loaded only when used.',
+        knowledge: 'Knowledge: reference material, read only when needed.',
+        tools: 'Tools: actions the agent can take. Descriptions go into the tool definitions.',
+        helpers: 'Helpers: agents or others the agent can hand work to.',
+        memory: 'Memory management: the key facts the agent keeps in mind, a few sentences each.',
+        outputs: 'Output management: files the agent produces.',
+        cases: 'Test cases: used to check whether the agent behaves correctly. Not given to the agent.',
+        reminders: 'Automatic reminders: inserted by the system at set moments, for the agent to act on.',
+        guarantees: 'System guarantees: rules the system must enforce. Not given to the agent.',
+        provided: 'Runtime info: information the system provides to the agent at run time.',
+      },
+    },
+  },
+};
+
+export type ContentPhrases = (typeof CONTENT)['zh'];
+
+export const UI = {
+  zh: {
+    title: {
+      systemPrompt: '系统提示词',
+      tools: '工具定义',
+      workflow: (name: string) => `流程 · ${name}`,
+      skill: (name: string) => `Skill · ${name}`,
+      skillReference: (name: string) => `Skill · ${name} · 附带资料`,
+      insert: '自动插入',
+      knowledge: (name: string) => `知识 · ${name}`,
+      helper: (name: string) => `帮手 · ${name}`,
+      reminder: (name: string) => `系统提醒 · ${name}`,
+      guarantees: '系统保证',
+      cases: '检验用例',
+      manifest: '配置清单',
+    },
+    diag: {
+      promptTooLong: (n: number, max: number) => `系统提示词约 ${n} token，超过建议上限 ${max}。只在某类任务里用的内容，可以挪进对应的 skill`,
+      skillNoBody: (name: string) => `skill「${name}」还没写正文，没有生成，也不在 Skill 目录里`,
+      skillNoWhen: (name: string) => `skill「${name}」没写什么时候用，agent 不知道何时读它`,
+      skillDescTooLong: (name: string, n: number, max: number) => `skill「${name}」的"什么时候用"加"什么时候不用"共 ${n} 字，超过上限 ${max}`,
+      skillTooLong: (name: string, lines: number, tokens: number) => `skill「${name}」的正文有 ${lines} 行、约 ${tokens} token，太长了。细节可以挪到附带资料里`,
+      noId: (name: string) => `「${name || '未命名'}」没有标识，没有生成`,
+      dupId: (id: string) => `标识重复：${id}。后一个没有生成`,
+      badId: (name: string, id: string, rule: string) => `「${name}」的标识「${id}」${rule}，没有生成`,
+      skillIdTooLong: (name: string) => `skill「${name}」的标识超过 64 个字符，没有生成`,
+    },
+    idRule: { slug: '只能用小写字母、数字和连字符', tool: '只能用字母、数字、下划线和连字符' },
+    errors: {
+      noAgent: (id: string) => `没有这个 agent：${id}`,
+      badName: (id: string) => `不合法的 agent 名：${id}`,
+      exists: (id: string) => `已经有一个叫「${id}」的文件夹了`,
+      buildNotOurs: (dir: string) => `${dir} 里已有不是本工具生成的文件，为避免误删，没有覆盖。请先移走它们。`,
+    },
+  },
+  en: {
+    title: {
+      systemPrompt: 'System prompt',
+      tools: 'Tool definitions',
+      workflow: (name: string) => `Workflow · ${name}`,
+      skill: (name: string) => `Skill · ${name}`,
+      skillReference: (name: string) => `Skill · ${name} · Reference`,
+      insert: 'Auto-inserted content',
+      knowledge: (name: string) => `Knowledge · ${name}`,
+      helper: (name: string) => `Helper · ${name}`,
+      reminder: (name: string) => `Reminder · ${name}`,
+      guarantees: 'System guarantees',
+      cases: 'Test cases',
+      manifest: 'Manifest',
+    },
+    diag: {
+      promptTooLong: (n: number, max: number) => `The system prompt is about ${n} tokens, over the suggested limit of ${max}. Content used only in some tasks can move into the matching skill`,
+      skillNoBody: (name: string) => `Skill "${name}" has no body yet, so it is not generated and not listed`,
+      skillNoWhen: (name: string) => `Skill "${name}" has no "when to use", so the agent cannot tell when to read it`,
+      skillDescTooLong: (name: string, n: number, max: number) => `Skill "${name}": "when to use" plus "when not to use" is ${n} characters, over the limit of ${max}`,
+      skillTooLong: (name: string, lines: number, tokens: number) => `Skill "${name}" has ${lines} lines, about ${tokens} tokens. Too long; move details into its reference`,
+      noId: (name: string) => `"${name || 'Untitled'}" has no identifier, so it was not generated`,
+      dupId: (id: string) => `Duplicate identifier: ${id}. The later one was not generated`,
+      badId: (name: string, id: string, rule: string) => `"${name}": identifier "${id}" ${rule}, so it was not generated`,
+      skillIdTooLong: (name: string) => `Skill "${name}": identifier is longer than 64 characters, so it was not generated`,
+    },
+    idRule: { slug: 'may contain only lowercase letters, digits and hyphens', tool: 'may contain only letters, digits, underscores and hyphens' },
+    errors: {
+      noAgent: (id: string) => `No such agent: ${id}`,
+      badName: (id: string) => `Invalid agent name: ${id}`,
+      exists: (id: string) => `A folder named "${id}" already exists`,
+      buildNotOurs: (dir: string) => `${dir} contains files this tool did not generate. To avoid deleting them, nothing was overwritten. Move them away first.`,
+    },
+  },
+};
+
+export type UiPhrases = (typeof UI)['zh'];
+
+/** 给人看的错误：带上代号和参数，由服务端按界面语言写成句子 */
+export class AppError extends Error {
+  constructor(
+    public code: keyof UiPhrases['errors'],
+    public params: string[],
+  ) {
+    super((UI.zh.errors[code] as (...a: string[]) => string)(...params));
+  }
+}
+
+export const errorMessage = (e: unknown, lang: Lang): string =>
+  e instanceof AppError ? (UI[lang].errors[e.code] as (...a: string[]) => string)(...e.params) : (e as Error).message;

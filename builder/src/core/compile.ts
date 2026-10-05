@@ -3,44 +3,41 @@
 import YAML from 'yaml';
 import type { AgentDef, AutoId, BuildResult, Diagnostic, FileGroup, Item, OutputFile, PromptSection, Segment, Template } from './types';
 import { LIST_KINDS } from './types';
-import { ID_RULES, itemFields, listDef, optionLabel, placeOf, selectValue, text } from './outline';
+import { ID_RULES, itemFields, listDef, optionLabel, selectValue, text } from './outline';
+import { CONTENT, UI, type ContentPhrases, type Lang } from './phrases';
 import { countLines, estimateTokens } from './tokens';
+
+/** 进 agent 文件的固定说法，跟着大纲的语言 */
+const phrasesOf = (template: Template): ContentPhrases => CONTENT[template.language ?? 'zh'];
 
 export const SYSTEM_PROMPT_FILE = 'system-prompt.md';
 export const GUARANTEES_FILE = 'guarantees.md';
 export const TOOLS_FILE = 'tools.json';
 export const CASES_FILE = 'cases.md';
 export const INSERT_FILE = 'auto-insert.md';
-/** 自动插入的信息用这个标签包起来，系统提示词里说明它是什么 */
-export const INSERT_TAG = '运行信息';
-
-/** 自动加载的记忆用这个标签包起来 */
-export const MEMORY_TAG = '记忆';
-/** 到时机时插入的提醒用这个标签包起来 */
-export const REMINDER_TAG = '系统提醒';
-
-/** 一条提醒插入时的样子 */
-export const renderReminder = (r: Item): string => `<${REMINDER_TAG}>\n${text(r.text) || '（还没写提醒的内容）'}\n</${REMINDER_TAG}>`;
+/** 一条提醒插入时的样子：用系统提醒的标签包起来 */
+export function renderReminder(template: Template, r: Item): string {
+  const P = phrasesOf(template);
+  return `<${P.tag.reminder}>\n${text(r.text) || P.reminderEmpty}\n</${P.tag.reminder}>`;
+}
 
 /** 系统自动插入消息的内容：每条消息开头一块；会话开始和压缩之后，运行信息一块、自动加载的记忆一块。用示例值预览，真实的值由系统运行时填 */
-export function renderInsertions(def: AgentDef): { perMessage: string; sessionStart: string; memory: string } {
+export function renderInsertions(template: Template, def: AgentDef): { perMessage: string; sessionStart: string; memory: string } {
+  const P = phrasesOf(template);
   const block = (items: Item[]) =>
-    items.length ? [`<${INSERT_TAG}>`, ...items.map((x) => `${x.name}：${text(x.sample) || '（由系统填写）'}`), `</${INSERT_TAG}>`].join('\n') : '';
+    items.length ? [`<${P.tag.insert}>`, ...items.map((x) => `${x.name}${P.colon}${text(x.sample) || P.sampleEmpty}`), `</${P.tag.insert}>`].join('\n') : '';
   const items = def.provided.filter((x) => text(x.name));
   const memory = autoMemory(def);
   return {
     perMessage: block(items.filter((x) => x.where !== 'session_start')),
     sessionStart: block(items.filter((x) => x.where === 'session_start')),
-    memory: memory.length ? [`<${MEMORY_TAG}>`, ...memory.map((m) => `## ${m.name}（${text(m.path)}）\n（系统读入这个文件的内容）`), `</${MEMORY_TAG}>`].join('\n') : '',
+    memory: memory.length ? [`<${P.tag.memory}>`, ...memory.map((m) => `## ${m.name}${P.paren(text(m.path))}\n${P.memoryFileBody}`), `</${P.tag.memory}>`].join('\n') : '',
   };
 }
 
 /** 开工和压缩之后由系统自动加载的记忆 */
 const autoMemory = (def: AgentDef): Item[] => def.memory.filter((m) => text(m.name) && text(m.path) && m.load !== 'on_demand');
 export const MANIFEST_FILE = 'manifest.yaml';
-
-/** 句子末尾补句号 */
-const sentence = (s: string): string => (s && !/[。．.!！?？；;：:]$/.test(s) ? `${s}。` : s);
 
 /** skill 的头部：这两格进系统提示词的 Skill 目录，其余是正文 */
 const SKILL_HEAD = ['when_use', 'when_not'];
@@ -49,10 +46,11 @@ export function skillHasBody(template: Template, skill: Item): boolean {
   return listDef(template, 'skills').fields.some((f) => !SKILL_HEAD.includes(f.id) && text(skill[f.id]));
 }
 
-export function skillDescription(skill: Item): string {
-  const use = sentence(text(skill.when_use));
+export function skillDescription(template: Template, skill: Item): string {
+  const P = phrasesOf(template);
+  const use = P.sentence(text(skill.when_use));
   const not = text(skill.when_not);
-  return [use, not ? `不用于：${sentence(not)}` : ''].filter(Boolean).join('');
+  return [use, not ? `${P.notFor}${P.sentence(not)}` : ''].filter(Boolean).join(template.language === 'en' ? ' ' : '');
 }
 
 /** 自己实现的工具进工具定义；平台自带和 MCP 的工具说明改不了，补充用法进系统提示词 */
@@ -70,9 +68,6 @@ const EFFECT_ANNOTATIONS: Record<string, Record<string, boolean>> = {
   external: { readOnlyHint: false, openWorldHint: true },
 };
 
-/** 表格里的一格：去掉换行，转义竖线 */
-const cell = (v: unknown): string => text(v).replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|') || '—';
-
 /** 一张清单按 group_by 那一格分块，每块一串条目；只有一块时不加小标题 */
 function groupedLines(template: Template, kind: 'memory' | 'outputs', items: Item[], line: (x: Item) => string): string {
   const list = listDef(template, kind);
@@ -86,18 +81,28 @@ function groupedLines(template: Template, kind: 'memory' | 'outputs', items: Ite
   const lines = (rows: Item[]) => rows.map(line).join('\n');
   const groups = [...new Set(sorted.map(rank))];
   if (!by || groups.length === 1) return lines(sorted);
-  return groups.map((g) => `**${options[g]?.label ?? '其他'}**\n\n${lines(sorted.filter((x) => rank(x) === g))}`).join('\n\n');
+  return groups.map((g) => `**${options[g]?.label ?? phrasesOf(template).other}**\n\n${lines(sorted.filter((x) => rank(x) === g))}`).join('\n\n');
 }
+
+/** 把几句拼成一段：中文直接连，英文句间加空格 */
+const joinSentences = (template: Template, bits: string[]): string => bits.filter(Boolean).join(template.language === 'en' ? ' ' : '');
+
+/** 条目的开头：- **名称**（位置）： */
+const entryHead = (P: ContentPhrases, name: string, where?: string): string => `- **${name}**${where ? P.paren(where) : ''}${P.colon}`;
 
 /** 一样产出物的一行：放在哪、写什么、什么时候写、怎么改 */
 function outputLine(template: Template, o: Item): string {
+  const P = phrasesOf(template);
   const list = listDef(template, 'outputs');
-  const bits = [`- **${o.name}**（\`${text(o.path) || '—'}\`）：`];
-  if (text(o.format)) bits.push(sentence(text(o.format)));
-  if (text(o.when)) bits.push(`什么时候写：${sentence(text(o.when))}`);
-  bits.push(`${optionLabel(list, 'write', o)}。`);
-  if (o.confirm === true) bits.push('用户确认后才算数。');
-  return bits.join('');
+  return (
+    entryHead(P, String(o.name), `\`${text(o.path) || '—'}\``) +
+    joinSentences(template, [
+      text(o.format) ? P.sentence(text(o.format)) : '',
+      text(o.when) ? `${P.whenWrite}${P.sentence(text(o.when))}` : '',
+      P.sentence(optionLabel(list, 'write', o)),
+      o.confirm === true ? P.confirmed : '',
+    ])
+  );
 }
 
 /** 选了某个 skill 的产出物写进那个 skill；没选、或选的 skill 不生成的，写进系统提示词 */
@@ -108,84 +113,77 @@ function outputsOf(template: Template, def: AgentDef, skillId?: string): Item[] 
 
 /** 系统提示词里自动生成的正文（不含标题）。来源还没填时返回空串。 */
 export function renderAuto(id: AutoId, template: Template, def: AgentDef): string {
+  const P = phrasesOf(template);
+  const S = P.sentence;
+  const join = (bits: string[]) => joinSentences(template, bits);
   const named = (items: Item[]) => items.filter((x) => text(x.name));
   switch (id) {
     case 'guarantee_note': {
       // 规矩本身写在它该在的地方；这里只告诉 agent 有系统在拦，被拦下时怎么办
       if (!named(def.guarantees).length) return '';
-      return '有些操作会被系统直接拦下。被拦下时不要换一种方式绕过去，向用户说明。';
+      return P.guaranteeNote;
     }
     case 'insert_note': {
-      const line = (x: Item) => `- **${x.name}**${text(x.explain) ? `：${sentence(text(x.explain))}` : ''}`;
+      const line = (x: Item) => `- **${x.name}**${text(x.explain) ? `${P.colon}${S(text(x.explain))}` : ''}`;
       const provided = named(def.provided);
       const each = provided.filter((x) => x.where !== 'session_start');
       const once = provided.filter((x) => x.where === 'session_start');
       const memory = autoMemory(def);
+      const memorySection = template.prompt.sections.find((sec) => (sec.auto ?? []).some((a) => a.id === 'memory_list'))?.name ?? '';
       const parts: string[] = [];
-      if (each.length) parts.push(`每条消息开头的 <${INSERT_TAG}>：\n\n${each.map(line).join('\n')}`);
-      if (once.length) parts.push(`会话开始和压缩之后的 <${INSERT_TAG}>：\n\n${once.map(line).join('\n')}`);
-      if (memory.length) parts.push(`会话开始和压缩之后的 <${MEMORY_TAG}>：${memory.map((m) => m.name).join('、')}，见「记忆」。`);
-      if (named(def.reminders).some((r) => text(r.text))) parts.push(`<${REMINDER_TAG}>：到一定时机由系统插入，告诉你该做什么。`);
+      if (each.length) parts.push(`${P.perMessageHead(P.tag.insert)}\n\n${each.map(line).join('\n')}`);
+      if (once.length) parts.push(`${P.onceHead(P.tag.insert)}\n\n${once.map(line).join('\n')}`);
+      if (memory.length) parts.push(P.memoryNote(P.tag.memory, P.list(memory.map((m) => String(m.name))), memorySection));
+      if (named(def.reminders).some((r) => text(r.text))) parts.push(P.reminderNote(P.tag.reminder));
       if (!parts.length) return '';
-      return [`系统会往消息里插入下面这些内容。它们来自系统，不是用户说的话。`, ...parts].join('\n\n');
+      return [P.insertIntro, ...parts].join('\n\n');
+    }
+    case 'workflow_index': {
+      const flows = def.workflows.filter((w) => text(w.name) && text(w.steps));
+      if (!flows.length) return '';
+      const lines = flows.map((w) => `${entryHead(P, String(w.name), `\`workflows/${w.id}.md\``)}${S(text(w.when))}`);
+      return `${P.workflowsLead}\n\n${lines.join('\n')}`;
     }
     case 'skill_index': {
       const skills = def.skills.filter((s) => skillHasBody(template, s));
       if (!skills.length) return '';
-      const lines = skills.map((s) => `- **${s.name}**（\`${s.id}\`）：${skillDescription(s)}`);
-      return `下面这些 skill 平时不加载。遇到对应的情况时，先读这个 skill，再动手。\n\n${lines.join('\n')}`;
+      const lines = skills.map((s) => `${entryHead(P, String(s.name), `\`${s.id}\``)}${skillDescription(template, s)}`);
+      return `${P.skillsLead}\n\n${lines.join('\n')}`;
     }
     case 'knowledge_index': {
       const docs = def.knowledge.filter((k) => text(k.name) && knowledgeWhere(k));
       if (!docs.length) return '';
       const lines = docs.map((k) => {
-        if (isInlineKnowledge(k)) return `- **${k.name}**（\`${knowledgeWhere(k)}\`）：${sentence(text(k.when))}`;
-        const source = text(k.source) ? `来源：${sentence(text(k.source))}` : '';
-        return `- **${k.name}**：${sentence(text(k.when))}位置：${sentence(knowledgeWhere(k))}${source}`;
+        if (isInlineKnowledge(k)) return `${entryHead(P, String(k.name), `\`${knowledgeWhere(k)}\``)}${S(text(k.when))}`;
+        return entryHead(P, String(k.name)) + join([S(text(k.when)), `${P.location}${S(knowledgeWhere(k))}`, text(k.source) ? `${P.source}${S(text(k.source))}` : '']);
       });
-      return `下面这些资料平时不加载，需要时去对应的位置查。\n\n${lines.join('\n')}`;
+      return `${P.knowledgeLead}\n\n${lines.join('\n')}`;
     }
     case 'tool_notes': {
       const list = listDef(template, 'tools');
       const notes = named(def.tools).filter((t) => !isOwnTool(t) && (text(t.when) || text(t.usage)));
       if (!notes.length) return '';
-      const lines = notes.map((t) => {
-        const bits = [`- **${t.name}**（\`${t.id}\`）：`];
-        if (text(t.when)) bits.push(`什么时候用：${sentence(text(t.when))}`);
-        if (text(t.usage)) bits.push(sentence(text(t.usage)));
-        bits.push(`影响：${optionLabel(list, 'effect', t)}。`);
-        return bits.join('');
-      });
-      return `下面这些工具由平台或 MCP 提供，补充用法如下：\n\n${lines.join('\n')}`;
+      const lines = notes.map(
+        (t) => entryHead(P, String(t.name), `\`${t.id}\``) + join([text(t.when) ? `${P.whenUse}${S(text(t.when))}` : '', text(t.usage) ? S(text(t.usage)) : '', `${P.effect}${S(optionLabel(list, 'effect', t))}`]),
+      );
+      return `${P.toolNotesLead}\n\n${lines.join('\n')}`;
     }
     case 'helper_list': {
+      // 常驻的只有名字、能做什么、什么时候交给它；交代什么、交回什么、怎么检查在它的文件里
       const helpers = named(def.helpers);
       if (!helpers.length) return '';
-      return helpers
-        .map((h) => {
-          const bits = [`- **${h.name}**：${sentence(text(h.purpose))}`];
-          const more: [string, unknown][] = [
-            ['什么时候交给它', h.when],
-            ['交代', h.brief],
-            ['交回', h.returns],
-            ['检查', h.check],
-          ];
-          for (const [label, v] of more) if (text(v)) bits.push(`${label}：${sentence(text(v))}`);
-          return bits.join('');
-        })
-        .join('\n');
+      const lines = helpers.map(
+        (h) => entryHead(P, String(h.name), `\`helpers/${h.id}.md\``) + join([S(text(h.purpose)), text(h.when) ? `${P.helper.when}${P.colon}${S(text(h.when))}` : '']),
+      );
+      return `${P.helpersLead}\n\n${lines.join('\n')}`;
     }
     case 'memory_list': {
       const items = named(def.memory);
       if (!items.length) return '';
       const auto = new Set(autoMemory(def));
-      const line = (m: Item) => {
-        const bits = [`- **${m.name}**（\`${text(m.path) || '—'}\`${auto.has(m) ? '，自动加载' : '，需要时读'}）：`];
-        if (text(m.format)) bits.push(sentence(text(m.format)));
-        if (text(m.when)) bits.push(`什么时候更新：${sentence(text(m.when))}`);
-        if (text(m.write)) bits.push(sentence(text(m.write)));
-        return bits.join('');
-      };
+      const line = (m: Item) =>
+        entryHead(P, String(m.name), `\`${text(m.path) || '—'}\`${auto.has(m) ? P.autoLoaded : P.onDemand}`) +
+        join([text(m.format) ? S(text(m.format)) : '', text(m.when) ? `${P.whenUpdate}${S(text(m.when))}` : '', text(m.write) ? S(text(m.write)) : '']);
       return groupedLines(template, 'memory', items, line);
     }
     case 'output_list': {
@@ -240,59 +238,77 @@ export function renderPrompt(template: Template, def: AgentDef): Segment[] {
 }
 
 function renderSkill(template: Template, def: AgentDef, skill: Item): { main: string; reference?: string } {
-  const front = YAML.stringify({ name: skill.id, description: skillDescription(skill) }, { lineWidth: 0 }).trimEnd();
+  const P = phrasesOf(template);
+  const front = YAML.stringify({ name: skill.id, description: skillDescription(template, skill) }, { lineWidth: 0 }).trimEnd();
   const parts = [`---\n${front}\n---`, `# ${skill.name}`];
+  // 正文是整段 markdown，原样放进来；别的格子（如果大纲里还有）各成一节
   for (const f of listDef(template, 'skills').fields) {
     if (SKILL_HEAD.includes(f.id) || f.id === 'reference') continue;
     const v = text(skill[f.id]);
-    if (v) parts.push(`## ${f.label}\n\n${v}`);
+    if (v) parts.push(f.id === 'body' ? v : `## ${f.label}\n\n${v}`);
   }
   const outputs = outputsOf(template, def, skill.id);
-  if (outputs.length) parts.push(`## 产出物\n\n${outputs.map((o) => outputLine(template, o)).join('\n')}`);
+  if (outputs.length) parts.push(`## ${P.skillOutputs}\n\n${outputs.map((o) => outputLine(template, o)).join('\n')}`);
   const reference = text(skill.reference);
-  if (reference) parts.push(`## 附带资料\n\n需要时读同目录下的 [reference.md](reference.md)。`);
+  if (reference) parts.push(`## ${P.reference}\n\n${P.referenceLine}`);
   return {
     main: parts.join('\n\n') + '\n',
-    reference: reference ? `# ${skill.name} · 附带资料\n\n${reference}\n` : undefined,
+    reference: reference ? `# ${skill.name} · ${P.reference}\n\n${reference}\n` : undefined,
   };
+}
+
+/** 清单里一项的说明文件：每一格一节，标题用大纲里的栏目名。流程、帮手都这样生成 */
+function renderEntry(template: Template, kind: 'workflows' | 'helpers', item: Item): string {
+  const parts = [`# ${item.name}`];
+  for (const f of listDef(template, kind).fields) {
+    const v = text(item[f.id]);
+    if (v) parts.push(`## ${f.label}\n\n${v}`);
+  }
+  return parts.join('\n\n') + '\n';
 }
 
 /** 一个工具的说明，写进工具定义的 description */
 export function toolDescription(template: Template, tool: Item): string {
+  const P = phrasesOf(template);
   const list = listDef(template, 'tools');
   const parts: string[] = [];
-  if (text(tool.purpose)) parts.push(sentence(text(tool.purpose)));
-  if (text(tool.when)) parts.push(`什么时候用：${sentence(text(tool.when))}`);
+  if (text(tool.purpose)) parts.push(P.sentence(text(tool.purpose)));
+  if (text(tool.when)) parts.push(`${P.whenUse}${P.sentence(text(tool.when))}`);
   for (const f of itemFields(list, tool)) {
     if (['purpose', 'when'].includes(f.id) || f.options) continue;
     const v = text(tool[f.id]);
-    if (v) parts.push(`${f.label}：\n${v}`);
+    if (v) parts.push(`${f.label}${P.colon.trim()}\n${v}`);
   }
-  parts.push(`影响：${optionLabel(list, 'effect', tool)}。`);
+  parts.push(`${P.effect}${P.sentence(optionLabel(list, 'effect', tool))}`);
   return parts.join('\n\n');
 }
 
-function renderGuarantees(def: AgentDef): string {
-  const parts = ['# 系统保证', '这些规矩必须由系统强制执行，不能只靠提示词。本文件交给工程实现，不给 agent 看。'];
+function renderGuarantees(template: Template, def: AgentDef): string {
+  const P = phrasesOf(template);
+  const parts = [`# ${P.guarantees.title}`, P.guarantees.intro];
   const rules = def.guarantees.filter((g) => text(g.name));
-  if (!rules.length) parts.push('（还没有）');
-  for (const g of rules) parts.push(`## ${text(g.name)}\n\n怎么强制：${text(g.how) || '（还没写）'}`);
+  if (!rules.length) parts.push(P.none);
+  for (const g of rules) parts.push(`## ${text(g.name)}\n\n${P.guarantees.how}${text(g.how) || P.notWritten}`);
   return parts.join('\n\n') + '\n';
 }
 
-function renderCases(def: AgentDef): string {
-  const parts = ['# 检验用例', '用来检验 agent 做得对不对。本文件不给 agent 看。'];
+function renderCases(template: Template, def: AgentDef): string {
+  const P = phrasesOf(template);
+  const parts = [`# ${P.cases.title}`, P.cases.intro];
   const cases = def.cases.filter((c) => text(c.name) || text(c.scenario));
-  if (!cases.length) parts.push('（还没有）');
+  if (!cases.length) parts.push(P.none);
   for (const c of cases) {
-    const lines = [`- 情景：${text(c.scenario) || '（还没写）'}`, `- 应该怎么做：${text(c.expected) || '（还没写）'}`];
-    if (text(c.check)) lines.push(`- 怎么判定：${text(c.check)}`);
-    parts.push(`## ${text(c.name) || '未命名'}\n\n${lines.join('\n')}`);
+    const lines = [`- ${P.cases.scenario}${text(c.scenario) || P.notWritten}`, `- ${P.cases.expected}${text(c.expected) || P.notWritten}`];
+    if (text(c.check)) lines.push(`- ${P.cases.check}${text(c.check)}`);
+    parts.push(`## ${text(c.name) || P.unnamed}\n\n${lines.join('\n')}`);
   }
   return parts.join('\n\n') + '\n';
 }
 
-export function compile(template: Template, def: AgentDef): BuildResult {
+/** 合成。uiLang：文件标题和问题提示用哪种语言（默认跟大纲一样） */
+export function compile(template: Template, def: AgentDef, uiLang?: Lang): BuildResult {
+  const P = phrasesOf(template);
+  const U = UI[uiLang ?? template.language ?? 'zh'];
   const diags: Diagnostic[] = [];
   const files: OutputFile[] = [];
   const add = (path: string, group: FileGroup, title: string, content: string, target: string, segments?: Segment[]) => {
@@ -307,89 +323,97 @@ export function compile(template: Template, def: AgentDef): BuildResult {
       ...(segments ? { segments } : {}),
     });
   };
-  const usable = checkIds(template, def, diags);
+  const usable = checkIds(template, def, diags, uiLang ?? template.language ?? 'zh');
 
   // 一开始就给：系统提示词
   const segments = renderPrompt(template, def);
   const prompt = segments.map((s) => s.content).join('\n\n');
-  add(SYSTEM_PROMPT_FILE, 'start', '系统提示词', prompt ? prompt + '\n' : '', `section:${template.prompt.sections[0].id}`, segments);
+  add(SYSTEM_PROMPT_FILE, 'start', U.title.systemPrompt, prompt ? prompt + '\n' : '', `section:${template.prompt.sections[0].id}`, segments);
   const promptTokens = files[0].tokens;
   if (promptTokens > template.budgets.system_prompt_tokens) {
-    diags.push({
-      severity: 'warning',
-      message: `系统提示词约 ${promptTokens} token，超过建议上限 ${template.budgets.system_prompt_tokens}。只在某类任务里用的内容，可以挪进对应的 skill`,
-    });
+    diags.push({ severity: 'warning', message: U.diag.promptTooLong(promptTokens, template.budgets.system_prompt_tokens) });
   }
 
   // 一开始就给：工具定义，由程序随请求交给模型（API 会把它们和系统提示词拼在一起）
   const tools = def.tools.filter((t) => usable.has(t) && isOwnTool(t));
   if (tools.length) {
     const definitions = tools.map((t) => ({ name: t.id, description: toolDescription(template, t), annotations: EFFECT_ANNOTATIONS[String(t.effect)] ?? EFFECT_ANNOTATIONS.read }));
-    add(TOOLS_FILE, 'start', '工具定义', JSON.stringify(definitions, null, 2) + '\n', 'part:tools');
+    add(TOOLS_FILE, 'start', U.title.tools, JSON.stringify(definitions, null, 2) + '\n', 'part:tools');
   }
+
+  // 选定后读：每个流程一份
+  const workflows = def.workflows.filter((w) => usable.has(w) && text(w.steps));
+  for (const w of workflows) add(`workflows/${w.id}.md`, 'on_demand', U.title.workflow(String(w.name)), renderEntry(template, 'workflows', w), `item:workflows:${w.id}`);
+
+  // 派活前读：每个帮手一份说明
+  const helpers = def.helpers.filter((h) => usable.has(h) && text(h.name));
+  for (const h of helpers) add(`helpers/${h.id}.md`, 'on_demand', U.title.helper(String(h.name)), renderEntry(template, 'helpers', h), `item:helpers:${h.id}`);
 
   // 用到才加载：每个 skill 的正文
   const skills = def.skills.filter((s) => usable.has(s) && skillHasBody(template, s));
   for (const s of def.skills) {
     if (usable.has(s) && !skillHasBody(template, s)) {
-      diags.push({ severity: 'warning', message: `skill「${s.name}」还没写正文，没有生成，也不在 Skill 目录里`, target: `item:skills:${s.id}` });
+      diags.push({ severity: 'warning', message: U.diag.skillNoBody(String(s.name)), target: `item:skills:${s.id}` });
     }
   }
   for (const s of skills) {
     const target = `item:skills:${s.id}`;
     const { main, reference } = renderSkill(template, def, s);
-    add(`skills/${s.id}/SKILL.md`, 'on_demand', `Skill · ${s.name}`, main, target);
-    if (reference) add(`skills/${s.id}/reference.md`, 'on_demand', `Skill · ${s.name} · 附带资料`, reference, target);
-    const description = skillDescription(s);
-    if (!description) diags.push({ severity: 'warning', message: `skill「${s.name}」没写什么时候用，agent 不知道何时读它`, target });
+    add(`skills/${s.id}/SKILL.md`, 'on_demand', U.title.skill(String(s.name)), main, target);
+    if (reference) add(`skills/${s.id}/reference.md`, 'on_demand', U.title.skillReference(String(s.name)), reference, target);
+    const description = skillDescription(template, s);
+    if (!description) diags.push({ severity: 'warning', message: U.diag.skillNoWhen(String(s.name)), target });
     if (description.length > template.budgets.skill_description_chars) {
-      diags.push({ severity: 'warning', message: `skill「${s.name}」的"什么时候用"加"什么时候不用"共 ${description.length} 字，超过上限 ${template.budgets.skill_description_chars}`, target });
+      diags.push({ severity: 'warning', message: U.diag.skillDescTooLong(String(s.name), description.length, template.budgets.skill_description_chars), target });
     }
     const lines = countLines(main);
     const tokens = estimateTokens(main);
     if (lines > template.budgets.skill_lines || tokens > template.budgets.skill_tokens) {
-      diags.push({ severity: 'warning', message: `skill「${s.name}」的正文有 ${lines} 行、约 ${tokens} token，太长了。细节可以挪到附带资料里`, target });
+      diags.push({ severity: 'warning', message: U.diag.skillTooLong(String(s.name), lines, tokens), target });
     }
   }
 
   // 系统插入消息：运行信息、自动加载的记忆
-  const inserts = renderInsertions(def);
+  const inserts = renderInsertions(template, def);
   if (inserts.perMessage || inserts.sessionStart || inserts.memory) {
-    const parts = ['# 自动插入', '这些内容由系统在运行时插入消息，不在系统提示词里。下面的值是示例，真实的值由系统填。'];
-    if (inserts.perMessage) parts.push(`## 每条消息开头\n\n\`\`\`\n${inserts.perMessage}\n\`\`\``);
+    const parts = [`# ${P.insertFile.title}`, P.insertFile.intro];
+    if (inserts.perMessage) parts.push(`## ${P.insertFile.perMessage}\n\n\`\`\`\n${inserts.perMessage}\n\`\`\``);
     const once = [inserts.sessionStart, inserts.memory].filter(Boolean).join('\n\n');
-    if (once) parts.push(`## 会话开始和压缩之后\n\n\`\`\`\n${once}\n\`\`\``);
-    add(INSERT_FILE, 'message', '自动插入', parts.join('\n\n') + '\n', 'part:environment');
+    if (once) parts.push(`## ${P.insertFile.once}\n\n\`\`\`\n${once}\n\`\`\``);
+    add(INSERT_FILE, 'message', U.title.insert, parts.join('\n\n') + '\n', 'part:environment');
   }
 
   // 用到才加载：知识
   const knowledge = def.knowledge.filter((k) => usable.has(k) && knowledgeWhere(k));
   for (const k of knowledge.filter(isInlineKnowledge)) {
-    const source = text(k.source) ? `> 来源与更新时间：${text(k.source)}\n\n` : '';
-    add(`knowledge/${k.id}.md`, 'on_demand', `知识 · ${k.name}`, `# ${k.name}\n\n${source}${text(k.content)}\n`, `item:knowledge:${k.id}`);
+    const source = text(k.source) ? `> ${P.knowledgeSource}${text(k.source)}\n\n` : '';
+    add(`knowledge/${k.id}.md`, 'on_demand', U.title.knowledge(String(k.name)), `# ${k.name}\n\n${source}${text(k.content)}\n`, `item:knowledge:${k.id}`);
   }
 
   // 到时机时插入：系统提醒
   const reminders = def.reminders.filter((r) => usable.has(r) && text(r.text));
-  for (const r of reminders) add(`reminders/${r.id}.md`, 'situation', `系统提醒 · ${r.name}`, renderReminder(r) + '\n', `item:reminders:${r.id}`);
+  for (const r of reminders) add(`reminders/${r.id}.md`, 'situation', U.title.reminder(String(r.name)), renderReminder(template, r) + '\n', `item:reminders:${r.id}`);
 
   // 不给 agent 看
-  add(GUARANTEES_FILE, 'hidden', '系统保证', renderGuarantees(def), 'part:guarantees');
-  add(CASES_FILE, 'hidden', '检验用例', renderCases(def), 'part:cases');
+  add(GUARANTEES_FILE, 'hidden', U.title.guarantees, renderGuarantees(template, def), 'part:guarantees');
+  add(CASES_FILE, 'hidden', U.title.cases, renderCases(template, def), 'part:cases');
   const manifest = {
-    agent: text(def.config.name) || '未命名',
+    agent: text(def.config.name) || P.unnamed,
+    language: template.language ?? 'zh',
     ...(text(def.config.description) ? { description: text(def.config.description) } : {}),
     ...(text(def.config.model) ? { model: text(def.config.model) } : {}),
-    note: '本目录由 agent-context-builder 生成，不要手改。在编写页里改，保存后会重新生成。',
+    note: P.manifestNote,
     given_at_start: {
       system_prompt: SYSTEM_PROMPT_FILE,
       ...(tools.length ? { tools: TOOLS_FILE } : {}),
     },
     loaded_on_demand: {
+      workflows: workflows.map((w) => ({ id: w.id, name: w.name, when: text(w.when), file: `workflows/${w.id}.md` })),
+      helpers: helpers.map((h) => ({ id: h.id, name: h.name, file: `helpers/${h.id}.md` })),
       skills: skills.map((s) => ({
         id: s.id,
         name: s.name,
-        description: skillDescription(s),
+        description: skillDescription(template, s),
         file: `skills/${s.id}/SKILL.md`,
         ...(text(s.reference) ? { reference: `skills/${s.id}/reference.md` } : {}),
       })),
@@ -405,13 +429,14 @@ export function compile(template: Template, def: AgentDef): BuildResult {
     not_in_prompt: Object.fromEntries(template.prompt.sections.flatMap((sec) => sec.fields.filter((f) => f.prompt === false && text(def.prompt[f.id])).map((f) => [f.label, text(def.prompt[f.id])]))),
     not_for_agent: { guarantees: GUARANTEES_FILE, cases: CASES_FILE },
   };
-  add(MANIFEST_FILE, 'hidden', '配置清单', YAML.stringify(manifest, { lineWidth: 0 }), `section:${template.prompt.sections[0].id}`);
+  add(MANIFEST_FILE, 'hidden', U.title.manifest, YAML.stringify(manifest, { lineWidth: 0 }), `section:${template.prompt.sections[0].id}`);
 
   return { files, diagnostics: diags };
 }
 
 /** 检查标识：会成为文件名的要合规，同一清单里不能重复。返回可以生成文件的项。 */
-function checkIds(template: Template, def: AgentDef, diags: Diagnostic[]): Set<Item> {
+function checkIds(template: Template, def: AgentDef, diags: Diagnostic[], uiLang: Lang): Set<Item> {
+  const U = UI[uiLang];
   const usable = new Set<Item>();
   for (const kind of LIST_KINDS) {
     const seen = new Set<string>();
@@ -420,13 +445,13 @@ function checkIds(template: Template, def: AgentDef, diags: Diagnostic[]): Set<I
       const rule = ID_RULES[kind];
       if (!item.id) {
         const part = template.parts.find((p) => p.lists.includes(kind));
-        diags.push({ severity: 'error', message: `「${item.name || '未命名'}」没有标识，没有生成`, ...(part ? { target: `part:${part.id}` } : {}) });
+        diags.push({ severity: 'error', message: U.diag.noId(String(item.name ?? '')), ...(part ? { target: `part:${part.id}` } : {}) });
       } else if (seen.has(item.id)) {
-        diags.push({ severity: 'error', message: `标识重复：${item.id}。后一个没有生成`, target });
+        diags.push({ severity: 'error', message: U.diag.dupId(item.id), target });
       } else if (rule && !rule.pattern.test(item.id)) {
-        diags.push({ severity: 'error', message: `「${item.name}」的标识「${item.id}」${rule.message}，没有生成`, target });
+        diags.push({ severity: 'error', message: U.diag.badId(String(item.name), item.id, U.idRule[rule.rule]), target });
       } else if (kind === 'skills' && item.id.length > 64) {
-        diags.push({ severity: 'error', message: `skill「${item.name}」的标识超过 64 个字符，没有生成`, target });
+        diags.push({ severity: 'error', message: U.diag.skillIdTooLong(String(item.name)), target });
       } else {
         usable.add(item);
       }

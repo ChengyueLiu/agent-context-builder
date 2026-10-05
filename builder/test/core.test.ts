@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { compile, renderAuto } from '../src/core/compile';
 import { itemStatus, listDef, nextId, sectionStatus } from '../src/core/outline';
-import { agentDir, createAgent, emptyDef, listAgents, loadDef, loadTemplate, patchDef, saveDef, writeBuild } from '../src/core/store';
+import { agentDir, contentLang, createAgent, emptyDef, listAgents, loadDef, loadTemplate, loadTemplates, patchDef, saveDef, shapeProblems, writeBuild } from '../src/core/store';
 import type { AgentDef, NavEntry, Template } from '../src/core/types';
 import { AUTO_IDS } from '../src/core/types';
 
@@ -78,7 +78,7 @@ describe('填写情况', () => {
 
 describe('合成', () => {
   it('系统提示词按节的顺序拼，空的节不出现；身份在最开头，不加标题', () => {
-    const sp = file(def({ prompt: { red_lines: '- 不编造数据', role: '你是科研助手', goal: '目标是写出论文初稿', done: '逐条有证据' } }), 'system-prompt.md')!;
+    const sp = file(def({ prompt: { red_lines: '- 不编造数据', role: '你是科研助手', goal: '目标是写出论文初稿', quality: '逐条有证据' } }), 'system-prompt.md')!;
     expect(sp.content.startsWith('你是科研助手\n\n目标是写出论文初稿\n\n# 交付与验收')).toBe(true);
     expect(sp.content.indexOf('# 交付与验收')).toBeLessThan(sp.content.indexOf('# 原则与红线'));
     expect(sp.content).not.toContain('# 身份');
@@ -89,11 +89,11 @@ describe('合成', () => {
 
   it('一节有两块以上内容时每块一个二级标题；只有一块时正文直接写在节标题下；没有三级标题', () => {
     const d = def({
-      prompt: { steps: '分七步', fallback: '退回上一步', all_tools: '并行调用', resume: '开工先确认在哪一步', plan_rules: '随时更新' },
+      prompt: { gates: '逐条自查', fallback: '退回上一步', all_tools: '并行调用', resume: '开工先确认在哪一步', plan_rules: '随时更新' },
       memory: [{ id: 'm1', name: '进展', scope: 'project', path: 'memory/progress.md', format: '在做什么', when: '一步结束', write: '可以改写', load: 'auto' }],
     });
     const sp = file(d, 'system-prompt.md')!.content;
-    expect(sp).toContain('# 工作流程\n\n## 步骤\n\n分七步\n\n## 回退\n\n退回上一步');
+    expect(sp).toContain('# 工作流程\n\n## 关卡\n\n逐条自查\n\n## 回退\n\n退回上一步');
     expect(sp).toContain('# 资源\n\n## 工具的通用规则\n\n并行调用');
     expect(sp).toContain('# 项目管理\n\n随时更新');
     expect(sp).toContain('# 记忆\n\n## 开工与接续\n\n开工先确认在哪一步\n\n## 记忆清单\n\n- **进展**（`memory/progress.md`，自动加载）：在做什么。什么时候更新：一步结束。可以改写。');
@@ -103,7 +103,7 @@ describe('合成', () => {
   it('skill 的头部进系统提示词，正文单独成文件；没写正文的不列', () => {
     const d = def({
       skills: [
-        { id: 'survey', name: '调研', when_use: '进入调研这一步时', when_not: '只查一篇论文时', practice: '先检索' },
+        { id: 'survey', name: '调研', when_use: '进入调研这一步时', when_not: '只查一篇论文时', body: '先检索' },
         { id: 'idea', name: '想法', when_use: '进入想法这一步时' },
       ],
     });
@@ -115,7 +115,8 @@ describe('合成', () => {
     const skill = files.find((f) => f.path === 'skills/survey/SKILL.md')!;
     expect(skill.group).toBe('on_demand');
     expect(skill.content).toContain('name: survey');
-    expect(skill.content).toContain('## 具体做法\n\n先检索');
+    expect(skill.content).toContain('# 调研\n\n先检索\n');
+    expect(skill.content).not.toContain('## 正文');
     expect(skill.content).not.toContain('什么时候用');
     expect(files.some((f) => f.path.startsWith('skills/idea/'))).toBe(false);
   });
@@ -126,7 +127,7 @@ describe('合成', () => {
         { id: 'venue', name: '投稿要求', when: '写论文时', content: '页数不超过 9 页', source: '2026 年征稿说明' },
         { id: 'papers', name: '论文原文', when: '核对细节时', form: 'elsewhere', location: 'data/papers/', source: '2026-09 下载' },
       ],
-      skills: [{ id: 'writing', name: '论文写作', when_use: '写论文时', practice: '先写提纲' }],
+      skills: [{ id: 'writing', name: '论文写作', when_use: '写论文时', body: '先写提纲' }],
       tools: [{ id: 'web_search', name: '网页搜索', source: 'platform', when: '查最新消息时', effect: 'read' }],
       helpers: [{ id: 'h1', name: '审稿 agent', purpose: '审读稿件', when: '初稿完成后' }],
       memory: [
@@ -156,7 +157,8 @@ describe('合成', () => {
     expect(files.some((f) => f.path === 'knowledge/papers.md')).toBe(false);
     expect(sp).toContain('## 平台工具的补充用法\n\n下面这些工具由平台或 MCP 提供，补充用法如下：\n\n- **网页搜索**（`web_search`）：什么时候用：查最新消息时。影响：只读。');
     expect(files.some((f) => f.path === 'tools.json')).toBe(false);
-    expect(sp).toContain('## 帮手\n\n- **审稿 agent**：审读稿件。什么时候交给它：初稿完成后。');
+    expect(sp).toContain('## 帮手\n\n下面这些帮手可以接一整件活。派活之前先读它的说明文件：要交代什么、它交回什么、怎么检查。\n\n- **审稿 agent**（`helpers/h1.md`）：审读稿件。什么时候交给它：初稿完成后。');
+    expect(files.find((f) => f.path === 'helpers/h1.md')!.content).toContain('# 审稿 agent');
     // 记忆：只列要点，长度上限交给系统
     expect(sp).toContain('**本项目**\n\n- **参考**（`memory/reference.md`，需要时读）：去哪找。什么时候更新：得知时。');
     expect(sp).toContain('**跨项目**\n\n- **用户**（`~/memory/user.md`，自动加载）：用户是谁。什么时候更新：了解到新情况时。可以改写。');
@@ -187,6 +189,25 @@ describe('合成', () => {
     expect(files.find((f) => f.path === 'guarantees.md')!.content).toContain('怎么强制：程序核对');
   });
 
+  it('流程清单：系统提示词里只列名称和什么时候选；每个流程一个文件', () => {
+    const d = def({
+      workflows: [
+        { id: 'claim-route', name: '论点路线', when: '要验证一个论点时', steps: '1. 对齐\n2. 文献综述', done: '每条论断都有结论' },
+        { id: 'empty', name: '没写步骤' },
+      ],
+    });
+    const { files } = compile(template, d);
+    const sp = files.find((f) => f.path === 'system-prompt.md')!.content;
+    expect(sp).toContain('## 流程\n\n下面这些流程平时不加载。');
+    expect(sp).toContain('- **论点路线**（`workflows/claim-route.md`）：要验证一个论点时。');
+    expect(sp).not.toContain('1. 对齐');
+    expect(sp).not.toContain('没写步骤');
+    const flow = files.find((f) => f.path === 'workflows/claim-route.md')!;
+    expect(flow.group).toBe('on_demand');
+    expect(flow.content).toBe('# 论点路线\n\n## 什么时候选它\n\n要验证一个论点时\n\n## 步骤\n\n1. 对齐\n2. 文献综述\n\n## 完成条件\n\n每条论断都有结论\n');
+    expect(files.some((f) => f.path === 'workflows/empty.md')).toBe(false);
+  });
+
   it('工具写成一份工具定义；系统提醒各自成文件；不给 agent 的文件不计 token', () => {
     const d = def({
       tools: [{ id: 'run_experiment', name: '实验运行', purpose: '跑一次实验', when: '实验执行时', io: '参数 config', errors: '先改配置', effect: 'irreversible' }],
@@ -207,9 +228,9 @@ describe('合成', () => {
   it('标识有问题时报出来，不生成对应的文件', () => {
     const d = def({
       skills: [
-        { id: 'Bad Name', name: '甲', when_use: 'x', practice: 'y' },
-        { id: 'ok', name: '乙', when_use: 'x', practice: 'y' },
-        { id: 'ok', name: '丙', when_use: 'x', practice: 'y' },
+        { id: 'Bad Name', name: '甲', when_use: 'x', body: 'y' },
+        { id: 'ok', name: '乙', when_use: 'x', body: 'y' },
+        { id: 'ok', name: '丙', when_use: 'x', body: 'y' },
       ],
     });
     const { files, diagnostics } = compile(template, d);
@@ -228,7 +249,7 @@ describe('读写', () => {
     const d = def({
       config: { name: '测试' },
       prompt: { role: '你是助手', steps: '第一步\n\n第二步', asking: '  ' },
-      skills: [{ id: 'a', name: '甲', when_use: '用的时候', practice: '1. 做\n2. 查' }],
+      skills: [{ id: 'a', name: '甲', when_use: '用的时候', body: '1. 做\n2. 查' }],
       tools: [{ id: 't', name: '工具', purpose: '干活', io: '无', effect: 'external', confirm: true }],
       memory: [{ id: 'm1', name: '待办', by: 'agent', when: '每步', path: 'todo.md', write: 'edit', load: 'always' }],
     });
@@ -241,9 +262,9 @@ describe('读写', () => {
 
   it('改一部分：格子合并，清单整份替换', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'acb-'));
-    await saveDef(root, template, def({ config: { name: '测试' }, prompt: { role: 'A', steps: 'B' }, guarantees: [{ id: 'g1', name: '旧', how: 'x' }] }));
-    const after = await patchDef(root, template, { prompt: { steps: 'C' }, guarantees: [] });
-    expect(after.prompt).toEqual({ role: 'A', steps: 'C' });
+    await saveDef(root, template, def({ config: { name: '测试' }, prompt: { role: 'A', gates: 'B' }, guarantees: [{ id: 'g1', name: '旧', how: 'x' }] }));
+    const after = await patchDef(root, template, { prompt: { gates: 'C' }, guarantees: [] });
+    expect(after.prompt).toEqual({ role: 'A', gates: 'C' });
     expect(after.guarantees).toEqual([]);
     expect(after.config.name).toBe('测试');
   });
@@ -277,12 +298,50 @@ describe('读写', () => {
 describe('示例：科研 agent', () => {
   it('能读入、能合成，没有错误', async () => {
     const d = await loadDef(example, template);
-    const { files, diagnostics } = compile(template, d);
+    expect(contentLang(d)).toBe('en');
+    const { files, diagnostics } = compile((await loadTemplates()).en, d);
     expect(diagnostics.filter((x) => x.severity === 'error')).toEqual([]);
-    expect(d.skills).toHaveLength(8);
-    expect(files.map((f) => f.path)).toContain('skills/experiment-design/SKILL.md');
+    expect(d.skills.map((s) => s.id)).toEqual(['alignment', 'literature-review', 'ideate', 'approach-design', 'dataset', 'implementation', 'evaluation', 'writing', 'deliver', 'review']);
+    const paths = files.map((f) => f.path);
+    for (const p of ['workflows/claim-route.md', 'skills/approach-design/SKILL.md', 'helpers/paper-screener.md', 'knowledge/claims-list.md']) expect(paths).toContain(p);
+    expect(diagnostics.filter((x) => x.target?.startsWith('item:skills:'))).toEqual([]);
     const sp = files.find((f) => f.path === 'system-prompt.md')!;
     const withContent = template.prompt.sections.filter((s) => s.fields.some((f) => f.prompt !== false) || (s.auto ?? []).length);
     expect(sp.segments).toHaveLength(withContent.length);
+  });
+});
+
+describe('中英文', () => {
+  it('两种语言的大纲结构一样；结构一变就报出来', async () => {
+    const { zh, en } = await loadTemplates();
+    expect(zh.language).toBe('zh');
+    expect(en.language).toBe('en');
+    expect(shapeProblems(zh, en)).toEqual([]);
+    const broken = structuredClone(en);
+    broken.prompt.sections[1].fields.pop();
+    expect(shapeProblems(zh, broken).length).toBeGreaterThan(0);
+  });
+
+  it('英文 agent：生成的文件里没有中文；问题提示按界面语言写', async () => {
+    const { en } = await loadTemplates();
+    const d = await loadDef(example, en);
+    const { files, diagnostics } = compile(en, d, 'en');
+    for (const f of files) expect(f.content, f.path).not.toMatch(/[\u4e00-\u9fff]/);
+    const sp = files.find((f) => f.path === 'system-prompt.md')!.content;
+    expect(sp).toContain('# Workflow');
+    expect(sp).toContain('The system inserts the following into messages.');
+    expect(files.find((f) => f.path === 'auto-insert.md')!.content).toContain('<runtime_info>');
+    for (const x of diagnostics) expect(x.message).not.toMatch(/[\u4e00-\u9fff]/);
+    expect(compile(en, d, 'zh').diagnostics.map((x) => x.message).join()).toMatch(/[\u4e00-\u9fff]/);
+  });
+
+  it('新建 agent 用哪种语言的大纲，预填的内容和文件说明就是哪种语言', async () => {
+    const { en } = await loadTemplates();
+    const ws = await fs.mkdtemp(path.join(os.tmpdir(), 'acb-en-'));
+    await createAgent(ws, 'support', 'Support agent', en);
+    const d = await loadDef(path.join(ws, 'support'), en);
+    expect(contentLang(d)).toBe('en');
+    expect(d.prompt.judgment).not.toMatch(/[\u4e00-\u9fff]/);
+    expect(await fs.readFile(path.join(ws, 'support', 'memory.yaml'), 'utf8')).toMatch(/^# Memory management/);
   });
 });

@@ -1,30 +1,30 @@
 ---
 name: review
-description: 每个阶段结束时、实验失败后、项目结束时。
+description: At the end of each step, after an experiment fails, and at the end of the project.
 ---
 
-# 复盘
+# Retrospective
 
-## 目的
+# Retrospective
 
-找出结果和预期差在哪、原因是什么，把值得记下的写成经验提议。
+Find where the results diverged from expectations and why, and write up anything worth keeping as lesson proposals.
 
-## 具体做法
+## Steps
 
-复盘对照计划和质量标准，回答三个问题：
+Check the step (or the failed experiment, or the whole project) against the plan and the done-when criteria of the skill it used, with the Claims list and Attempts & failures as the record of what happened. Answer three questions:
 
-1. 结果和预期差在哪。
-2. 是方法错了（做法本身不对），还是执行错了（做法对，但没做到）。
-3. 下次应该怎么做。
+1. Where did the results diverge from expectations?
+2. Was the method wrong (the approach itself was flawed), or the execution wrong (the approach was right but was not carried out properly)?
+3. What should be done next time?
 
-方法错了的，提出修改做法的建议；执行错了的，记成一条提醒。
+For a method error, propose a change to the practice; for an execution error, record it as a reminder.
 
-复盘时记下自己在哪些事上可靠、在哪些事上常出错，写进经验提议。比如：某类实验的设置经常出错，某个方向的文献容易漏检。
+Also note what you are reliable at and what you often get wrong, and include it in the lesson proposals: for example, the setup for a certain kind of experiment often goes wrong, or literature in a certain area is easy to miss.
 
-## 产出什么
+## Output
 
-经验提议，交用户审。方法错了的，附上修改做法的建议。
+Lesson proposals, for the user to review. For a method error, include the suggested change to the practice: which skill and step, and the proposed wording.
 
-## 产出物
+## Outputs
 
-- **经验提议**（`outputs/lesson-proposals/`）：每条一个文件：规则、为什么、怎么用，注明来自哪个项目、哪次实验。成功和失败都记。什么时候写：每次复盘之后。可以改写。用户确认后才算数。
+- **Lesson proposals** (`records/lesson-proposals/`): One file per lesson: the rule, why, and how to apply it, noting which project and which experiment it came from. Record both successes and failures. When to write: After each retrospective. Can be rewritten. It counts only after the user confirms it.

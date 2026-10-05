@@ -1,9 +1,13 @@
 import { App as AntApp, ConfigProvider } from 'antd';
+import enUS from 'antd/locale/en_US';
 import zhCN from 'antd/locale/zh_CN';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import type { Lang } from '../core/phrases';
+import { setApiLang } from './api';
 import Editor from './Editor';
 import ProjectList from './components/ProjectList';
+import { LangProvider, savedLang, saveLang } from './i18n';
 import { agentInHash } from './util';
 import './styles.css';
 
@@ -21,12 +25,31 @@ function Root() {
   return agent ? <Editor key={agent} agentId={agent} onBack={() => open()} /> : <ProjectList onOpen={open} />;
 }
 
+/** 界面语言：记在浏览器里，切换后整个编辑器跟着换 */
+function Localized() {
+  const [lang, setLangState] = useState<Lang>(savedLang);
+  setApiLang(lang);
+  const setLang = (l: Lang) => {
+    saveLang(l);
+    setApiLang(l);
+    setLangState(l);
+  };
+  useEffect(() => {
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+  }, [lang]);
+  return (
+    <LangProvider lang={lang} setLang={setLang}>
+      <ConfigProvider locale={lang === 'en' ? enUS : zhCN}>
+        <AntApp>
+          <Root />
+        </AntApp>
+      </ConfigProvider>
+    </LangProvider>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider locale={zhCN}>
-      <AntApp>
-        <Root />
-      </AntApp>
-    </ConfigProvider>
+    <Localized />
   </StrictMode>,
 );

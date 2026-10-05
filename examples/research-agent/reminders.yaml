@@ -1,23 +1,43 @@
-# 自动提醒：系统到点插入的提醒，由 agent 去做。
+# Automatic reminders: inserted by the system at set moments, for the agent to act on.
 
 items:
   - id: step_review
-    name: 一步结束
-    trigger: 一步结束、进入下一步之前。
-    text: 这一步结束了。进入下一步之前，按「复盘」skill 复盘这一步，把值得记下的写成经验提议，并更新进展。
+    name: Step finished
+    trigger: When a step ends, before moving to the next step.
+    text: This step is finished. Before moving to the next step, run a retrospective on it using the "Retrospective" skill, write up anything worth keeping as lesson proposals, and update Progress.
   - id: plan_stale
-    name: 规划久未更新
-    trigger: 规划和待办连续 10 轮没有更新时触发。
-    text: 规划和待办很久没有更新了。先回头看一眼规划，确认手上的事还在为研究问题服务；如果卡住了，把这一项标成受阻，向用户汇报或调整计划。
+    name: Plan not updated for a while
+    trigger: Fires when the plan and to-dos have not been updated for 10 consecutive turns.
+    text: The plan and to-dos haven't been updated in a while. First look back at the plan and confirm that what you're working on still serves the research question. If you're stuck, mark the item as blocked, then report to the user or adjust the plan.
   - id: context_full
-    name: 上下文将满
-    trigger: 上下文占用超过 80% 时触发。
-    text: 上下文快满了。请先更新进展，把重要发现写进工作记录，压缩之后从进展接着做。
+    name: Context nearly full
+    trigger: Fires when context usage exceeds 80%.
+    text: The context is almost full. Update Progress first and write important findings into the work records; after compaction, pick up from Progress.
   - id: budget_low
-    name: 预算将尽
-    trigger: 已用预算超过 80% 时触发。
-    text: 预算即将用完。请保存当前状态，向用户汇报进展和剩余的工作，等用户决定是否追加预算。
+    name: Budget nearly used up
+    trigger: Fires when budget usage exceeds 80%.
+    text: The budget is almost used up. Save the current state, report your progress and the remaining work to the user, and wait for the user to decide whether to add more budget.
   - id: memory_long
-    name: 记忆超长
-    trigger: 某样记忆快超过它的长度上限时触发。
-    text: 记忆快超长了。请压缩：只留要点，细节挪进工作记录。
+    name: Memory too long
+    trigger: Fires when a memory item is close to its length limit.
+    text: "A memory item is getting too long. Compress it: keep only the key points and move the details into the work records."
+  - id: turn_interrupted
+    name: Turn interrupted
+    trigger: Fires when your previous turn was interrupted before it finished, for example by a new message from the user.
+    text: "Your previous turn was interrupted before it finished. Read the workspace before redoing anything: an action reported as rejected may in fact have run."
+  - id: session_restarted
+    name: Session restarted
+    trigger: Fires when a session resumes after a crash or restart.
+    text: This session was restarted. The conversation may have been lost, but the files were not. Check what already exists before redoing anything.
+  - id: self_check
+    name: Self-check
+    trigger: Fires every 4 hours of work, and whenever a batch of helper work finishes.
+    text: "Pause and check whether you are going somewhere or in circles. Read what is on disk, not your own recent summary: compare the latest work with the brief, the chain of decisions in the plan, and the tests of open claims. If the last steps only justify each other, or the same work keeps repeating, say so in Progress, then change course or ask the user."
+  - id: unfinished_stages
+    name: Unfinished stages elsewhere
+    trigger: Fires when you start a skill while another step's stages are still unfinished.
+    text: Another step still has unfinished stages. Finish them first, or record in the plan why you are skipping them.
+  - id: claims_not_updated
+    name: Claims list not updated
+    trigger: Fires when a step finishes and the Claims list gained no entries.
+    text: This step finished, but the Claims list has no new entries. If the step established or ruled out anything, record it now; if it did not, note why in Progress.

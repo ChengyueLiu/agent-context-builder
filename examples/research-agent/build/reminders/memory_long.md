@@ -1,3 +1,3 @@
-<系统提醒>
-记忆快超长了。请压缩：只留要点，细节挪进工作记录。
-</系统提醒>
+<system_reminder>
+A memory item is getting too long. Compress it: keep only the key points and move the details into the work records.
+</system_reminder>

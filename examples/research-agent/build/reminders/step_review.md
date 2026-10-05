@@ -1,3 +1,3 @@
-<系统提醒>
-这一步结束了。进入下一步之前，按「复盘」skill 复盘这一步，把值得记下的写成经验提议，并更新进展。
-</系统提醒>
+<system_reminder>
+This step is finished. Before moving to the next step, run a retrospective on it using the "Retrospective" skill, write up anything worth keeping as lesson proposals, and update Progress.
+</system_reminder>

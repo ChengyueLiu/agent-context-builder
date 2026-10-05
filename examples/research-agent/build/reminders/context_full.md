@@ -1,3 +1,3 @@
-<系统提醒>
-上下文快满了。请先更新进展，把重要发现写进工作记录，压缩之后从进展接着做。
-</系统提醒>
+<system_reminder>
+The context is almost full. Update Progress first and write important findings into the work records; after compaction, pick up from Progress.
+</system_reminder>

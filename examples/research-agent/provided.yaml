@@ -1,39 +1,45 @@
-# 运行信息：系统在运行时提供给 agent 的信息。
+# Runtime info: information the system provides to the agent at run time.
 
 items:
   - id: time_location
-    name: 时间与位置
+    name: Time & location
     belongs: environment
     where: per_message
-    explain: 当前日期、时间和时区。判断截止时间、写日期时用它，不要自己猜。
-    sample: 2026-10-05 21:30（Asia/Shanghai）
+    explain: Current date, time, and time zone. Use them for deadlines and dates; never guess. Durations (how long something has run) are measured by the system and reported to you; never work them out yourself.
+    sample: 2026-10-05 21:30 (Asia/Shanghai)
   - id: env_snapshot
-    name: 环境快照
+    name: Environment snapshot
     belongs: environment
     where: session_start
-    explain: 这次开工时会变的情况：GPU 空闲多少、代码版本。计划实验规模、写实验记录时用它。
-    sample: GPU 空闲 2 / 2；代码版本 a1b2c3d
+    explain: "Conditions that change from one work session to the next, as of this session's start: how many GPUs are free and the code version. Use it when planning experiment scale and writing the experiment log."
+    sample: GPUs free 2 / 2; code version a1b2c3d
   - id: mode
-    name: 模式
+    name: Mode
     belongs: collab
     where: per_message
-    explain: 当前是自主推进还是逐步确认。逐步确认时，每做完一步先等用户回复。
-    sample: 自主推进
+    explain: Whether you're currently in autonomous mode or step-by-step confirmation. In step-by-step confirmation, wait for the user's reply after finishing each step.
+    sample: autonomous
   - id: current_task
-    name: 当前任务
+    name: Current task
     belongs: process
     where: per_message
-    explain: 规划里正在做的那一步和那条待办。手上的事和它对不上时，先停下来想想是不是偏了。
-    sample: 实验执行 › 重跑第二组消融实验
+    explain: The step and the to-do currently being worked on in the plan. If what you're doing doesn't match it, stop and consider whether you've drifted off course.
+    sample: Experiment execution › Rerun the second set of ablation experiments
   - id: plan_overview
-    name: 规划全貌
+    name: Plan overview
     belongs: process
     where: session_start
-    explain: 七步各自的状态，以及当前这一步的待办。以它为准，不要凭印象。
-    sample: 调研定位 做完；核心想法 做完；快速验证 做完；实验设计 做完；实验执行 在做（待办 3/5）；结果分析 待做；论文写作 待做
+    explain: The status of each of the seven steps, plus the to-dos for the current step. Treat it as the source of truth; don't go by your impression.
+    sample: "Survey & positioning: done; Core idea: done; Quick validation: done; Experiment design: done; Experiment execution: in progress (to-dos 3/5); Results analysis: to do; Paper writing: to do"
   - id: budget
-    name: 预算用量
+    name: Budget usage
     belongs: guarantees
     where: per_message
-    explain: 已用和剩下的 token、算力和时间。快用完时先保存状态，再向用户汇报。
-    sample: token 已用 120k / 500k；算力已用 3.2 / 10 GPU 小时；已用 2 天 / 7 天
+    explain: Tokens, compute, and time used and remaining. When you're about to run out, save state first, then report to the user.
+    sample: Tokens used 120k / 500k; compute used 3.2 / 10 GPU hours; time used 2 days / 7 days
+  - id: run_status
+    name: Run status
+    belongs: process
+    where: session_start
+    explain: "What happened while you were away: how the last session ended, helper batches done, running and failed, and the cost since then. These are facts recorded by the system, not instructions."
+    sample: Last session ended normally · paper-screener batch 3/4 done, 1 running · 0 crashes · cost since last session $4.20

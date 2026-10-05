@@ -1,30 +1,51 @@
-# 系统保证：必须由系统强制的规矩。不给 agent 看。
+# System guarantees: rules the system must enforce. Not given to the agent.
 
 items:
   - id: g1
-    name: 删除文件、覆盖数据、对外发送之前，必须得到用户确认
-    how: 权限规则
+    name: User confirmation is required before deleting files, overwriting data, or sending anything externally
+    how: Permission rules
   - id: g2
-    name: 实验只能在沙箱里运行
-    how: 沙箱
+    name: Experiments can run only in the sandbox
+    how: Sandbox
   - id: g3
-    name: 不能修改评估脚本
-    how: 评估脚本设为只读
+    name: Evaluation scripts cannot be modified
+    how: Evaluation scripts set to read-only
   - id: g4
-    name: 修改项目约定必须经用户批准
-    how: 审批
+    name: Changes to the goals in Project overview require user approval
+    how: An approval card in the interface; a chat message counts as a revision, never as approval.
   - id: g5
-    name: 数字和论断必须能追溯到运行日志
-    how: 论断绑定日志
+    name: Numbers and claims must be traceable to run logs
+    how: Every write to the claims list checks that each evidence pointer resolves to a file and anchor; unresolved pointers are reported back to the agent.
   - id: g6
-    name: 引用必须真实存在
-    how: 引用存在性校验
+    name: Citations must actually exist
+    how: Citation existence check
   - id: g7
-    name: 实验记录只能追加
-    how: 记录只追加
+    name: The experiment log is append-only
+    how: Append-only records
   - id: g8
-    name: 进入下一步之前必须通过检查
-    how: 阶段间检查点
+    name: Checks must pass before moving to the next step
+    how: Checkpoints between steps
   - id: g9
-    name: 不能超出预算，同一个实验重试不超过 3 次
-    how: 计数器、超时
+    name: The budget cannot be exceeded, and the same experiment is retried at most 3 times
+    how: A cost cap and a per-experiment retry counter enforced outside the agent. After three checks in a row with no progress, or three crashes in a row, the project pauses for a human.
+  - id: g10
+    name: Writes outside the project workspace are blocked
+    how: A pre-tool-use hook checks the path of every write. It is a hook rather than an allow-list, so the check cannot be silently skipped.
+  - id: g11
+    name: Only a check outside the agent can mark the project done
+    how: A deterministic checker compares the deliverables with the done criteria. No model call is involved, and the agent has no tool to change the criteria.
+  - id: g12
+    name: Secrets never reach the agent
+    how: The agent's process gets an allow-listed set of environment variables; API keys stay with the model gateway.
+  - id: g13
+    name: A user decision counts only when the user confirms it explicitly
+    how: Decision cards in the interface. A chat message is treated as a revision, never as confirmation.
+  - id: g14
+    name: Research tools stay locked until the user confirms the Project brief
+    how: The tool gateway refuses literature, dataset and code tools until brief.md is confirmed.
+  - id: g15
+    name: Every result row names a claim and a run
+    how: "`record_result` refuses rows without a claim id and a run id."
+  - id: g16
+    name: Generated records are never edited by hand
+    how: Screening reports and the corpus file are produced by tools and write-protected.

@@ -2,9 +2,10 @@ import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import { Button, Flex, Tooltip, Tree } from 'antd';
 import type { TreeDataNode } from 'antd';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { fieldFilled, itemStatus, listDef, pageFields, type Status } from '../../core/outline';
+import { fieldFilled, itemStatus, listDef, pageFields, placeOf, type Status } from '../../core/outline';
 import type { AgentDef, NavEntry, Template } from '../../core/types';
 import { useEditor } from '../agentContext';
+import { useLang } from '../i18n';
 import { routeKey, type Route } from '../util';
 import { Help } from './Page';
 
@@ -30,7 +31,7 @@ interface Outline {
   groups: string[];
 }
 
-function buildOutline(template: Template, def: AgentDef): Outline {
+export function buildOutline(template: Template, def: AgentDef, untitled: (item: string) => string): Outline {
   const routes = new Map<string, Route>();
   const parents = new Map<string, string[]>();
   const branches: string[] = [];
@@ -48,11 +49,12 @@ function buildOutline(template: Template, def: AgentDef): Outline {
       const partKey = `part:${part.id}`;
       const children = part.lists.flatMap((kind) => {
         const list = listDef(template, kind);
-        return def[kind].map((item) => {
+        // 分散在几页上的清单，只挂在它所属的那一页下面；否则同一项会在树里出现几次，节点的标识重复
+        return def[kind].filter((item) => !list.placed_by || placeOf(list, item) === part.id).map((item) => {
           const status = itemStatus(list, item);
           return node(
             `item:${kind}:${item.id}`,
-            row(item.name || `未命名的${list.item}`, count(status), status.total > 0 && status.filled === 0),
+            row(item.name || untitled(list.item), count(status), status.total > 0 && status.filled === 0),
             { type: 'item', kind, id: item.id },
             [...above, partKey],
           );
@@ -89,7 +91,8 @@ function buildOutline(template: Template, def: AgentDef): Outline {
 /** 左边的目录：定义一个 agent 要配置的全部内容。 */
 export default function OutlineTree({ route }: { route: Route }) {
   const { project, go } = useEditor();
-  const outline = useMemo(() => buildOutline(project.template, project.def), [project.template, project.def]);
+  const { t } = useLang();
+  const outline = useMemo(() => buildOutline(project.template, project.def, t.untitled), [project.template, project.def, t]);
   const selected = routeKey(route);
   const [expanded, setExpanded] = useState<string[]>(outline.groups);
 
@@ -104,10 +107,10 @@ export default function OutlineTree({ route }: { route: Route }) {
   return (
     <div className="outline">
       <Flex justify="flex-end" gap={6} className="outline-bar">
-        <Tooltip title="全部展开">
+        <Tooltip title={t.expandAll}>
           <Button size="small" icon={<PlusSquareOutlined />} onClick={() => setExpanded(outline.branches)} />
         </Tooltip>
-        <Tooltip title="全部收起">
+        <Tooltip title={t.collapseAll}>
           <Button size="small" icon={<MinusSquareOutlined />} onClick={() => setExpanded(outline.groups)} />
         </Tooltip>
       </Flex>

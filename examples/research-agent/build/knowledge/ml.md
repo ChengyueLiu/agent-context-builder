@@ -1,17 +1,17 @@
-# 机器学习
+# Machine learning
 
-### 常用基准与指标
-- 语言建模：困惑度；长文本：LongBench、SCROLLS。
-- 分类：准确率、宏 F1。
+### Common benchmarks and metrics
+- Language modeling: perplexity; long context: LongBench, SCROLLS.
+- Classification: accuracy, macro-F1.
 
-### 主要会议
-NeurIPS、ICML、ICLR。
+### Major venues
+NeurIPS, ICML, ICLR.
 
-### 什么算贡献
-- 新方法：在公认基准上超过强基线，并有消融说明每个部分的作用。
-- 新发现：有系统的实验支撑，排除了更简单的解释。
-- 新基准或数据集：说明现有基准的缺陷，以及新基准如何弥补。
+### What counts as a contribution
+- New method: beats strong baselines on recognized benchmarks, with ablations showing what each component contributes.
+- New finding: backed by systematic experiments that rule out simpler explanations.
+- New benchmark or dataset: shows the shortcomings of existing benchmarks and how the new one addresses them.
 
-### 容易犯的错
-- 类别不平衡时准确率会误导，同时报告宏 F1 或按类别的指标。
-- 小数据集上的提升要报方差：单次运行的提升可能只是噪声。
+### Common mistakes
+- Accuracy is misleading under class imbalance; also report macro-F1 or per-class metrics.
+- Report variance for gains on small datasets: a gain from a single run may just be noise.

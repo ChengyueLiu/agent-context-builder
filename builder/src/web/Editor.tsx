@@ -1,10 +1,13 @@
 import { ArrowLeftOutlined, FileTextOutlined, QuestionCircleOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons';
 import { ProLayout } from '@ant-design/pro-components';
-import { Alert, App, Badge, Button, Drawer, Result, Spin, Tooltip } from 'antd';
+import { Alert, App, Badge, Button, Drawer, Result, Segmented, Spin, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Lang } from '../core/phrases';
+import { contentLang } from '../core/outline';
 import type { DefPatch } from '../core/types';
 import { EditorContext, type PageState } from './agentContext';
-import { agentApi, type ProjectPayload } from './api';
+import { agentApi, type ProjectPayload, type ServerProject } from './api';
+import { useLang } from './i18n';
 import DiagnosticList from './components/DiagnosticList';
 import Help from './components/Help';
 import ItemPage from './components/ItemPage';
@@ -19,11 +22,24 @@ interface Props {
   onBack: () => void;
 }
 
+/** 界面语言的大纲给界面用，内容语言的大纲给生成和例子用 */
+function localize(raw: ServerProject, lang: Lang): ProjectPayload {
+  return { ...raw, template: raw.templates[lang], contentTemplate: raw.templates[contentLang(raw.def)] };
+}
+
+/** 语言切换：中文 / English */
+export function LangSwitch() {
+  const { lang, setLang, t } = useLang();
+  return <Segmented<Lang> size="small" value={lang} onChange={setLang} options={(['zh', 'en'] as Lang[]).map((l) => ({ value: l, label: t.langName[l] }))} />;
+}
+
 /** 打开一个 agent 之后的界面：左边目录，中间配置，右边是由配置合成的系统提示词。 */
 export default function Editor({ agentId, onBack }: Props) {
   const { message, modal } = App.useApp();
+  const { lang, t } = useLang();
   const api = useMemo(() => agentApi(agentId), [agentId]);
-  const [project, setProject] = useState<ProjectPayload>();
+  const [raw, setProject] = useState<ServerProject>();
+  const project = useMemo(() => (raw ? localize(raw, lang) : undefined), [raw, lang]);
   const [error, setError] = useState<string>();
   const [wanted, setWanted] = useState<Route | undefined>(routeInHash);
   const [live, setLive] = useState<DefPatch>();
@@ -33,9 +49,10 @@ export default function Editor({ agentId, onBack }: Props) {
   const [reloading, setReloading] = useState(false);
   const page = useRef<PageState>({ dirty: false });
 
+  // 换了界面语言也重新取一次：问题提示是服务端按界面语言写的
   useEffect(() => {
     api.project().then(setProject, (e: Error) => setError(e.message));
-  }, [api]);
+  }, [api, lang]);
 
   const template = project?.template;
   const route = template ? canonical(template, wanted ?? firstRoute(template)) : undefined;
@@ -67,10 +84,10 @@ export default function Editor({ agentId, onBack }: Props) {
       const { dirty, save } = page.current;
       if (!dirty) return then();
       const asked = modal.confirm({
-        title: '这一页有没保存的修改',
-        content: '离开之前要保存吗？',
-        okText: '保存',
-        cancelText: '留在这一页',
+        title: t.unsavedTitle,
+        content: t.unsavedContent,
+        okText: t.save,
+        cancelText: t.stay,
         onOk: async () => {
           if (await save?.()) then();
         },
@@ -84,7 +101,7 @@ export default function Editor({ agentId, onBack }: Props) {
                 then();
               }}
             >
-              不保存
+              {t.discard}
             </Button>
             <CancelBtn />
             <OkBtn />
@@ -92,7 +109,7 @@ export default function Editor({ agentId, onBack }: Props) {
         ),
       });
     },
-    [modal],
+    [modal, t],
   );
 
   const jump = useCallback((next: Route) => setWanted(next), []);
@@ -108,7 +125,7 @@ export default function Editor({ agentId, onBack }: Props) {
     setReloading(true);
     try {
       setProject(await api.project());
-      message.success('已从磁盘重新读取');
+      message.success(t.reloaded);
     } catch (e) {
       message.error((e as Error).message);
     } finally {
@@ -118,7 +135,7 @@ export default function Editor({ agentId, onBack }: Props) {
 
   const context = useMemo(() => (project ? { api, project, setProject, go, jump, setPage, setLive } : null), [api, project, go, jump, setPage]);
 
-  if (error) return <Result status="error" title="打不开这个 agent" subTitle={error} extra={<Button onClick={onBack}>回到列表</Button>} />;
+  if (error) return <Result status="error" title={t.cannotOpen} subTitle={error} extra={<Button onClick={onBack}>{t.backToList}</Button>} />;
   if (!project || !context || !route || !template) return <Spin size="large" style={{ display: 'block', marginTop: 120 }} />;
 
   const { def, build } = project;
@@ -127,24 +144,25 @@ export default function Editor({ agentId, onBack }: Props) {
   const part = route.type === 'part' ? template.parts.find((p) => p.id === route.id) : undefined;
 
   const actions = [
-    <Tooltip key="prompt" title={showPrompt ? '收起系统提示词' : '显示系统提示词'}>
+    <Tooltip key="prompt" title={showPrompt ? t.hidePreview : t.showPreview}>
       <Button type={showPrompt ? 'default' : 'text'} icon={<FileTextOutlined />} onClick={() => setShowPrompt((x) => !x)}>
-        系统提示词
+        {t.preview}
       </Button>
     </Tooltip>,
     <Badge key="problems" count={build.diagnostics.length} size="small" color={errors ? undefined : '#faad14'} offset={[-4, 4]}>
       <Button type="text" icon={<WarningOutlined />} onClick={() => setShowProblems(true)}>
-        问题
+        {t.problems}
       </Button>
     </Badge>,
-    <Tooltip key="reload" title="直接改了磁盘上的文件之后，点这里重新读取">
+    <Tooltip key="reload" title={t.reloadHint}>
       <Button type="text" icon={<ReloadOutlined />} loading={reloading} onClick={reload}>
-        重新读取
+        {t.reload}
       </Button>
     </Tooltip>,
     <Button key="help" type="text" icon={<QuestionCircleOutlined />} onClick={() => setShowHelp(true)}>
-      帮助
+      {t.help}
     </Button>,
+    <LangSwitch key="lang" />,
   ];
 
   return (
@@ -169,9 +187,9 @@ export default function Editor({ agentId, onBack }: Props) {
       >
         <div className="workspace">
           <div className="workspace-main">
-            {project.buildError && <Alert type="error" showIcon title="生成的文件没有写到磁盘" description={project.buildError} style={{ margin: 16 }} />}
-            {route.type === 'section' && (section ? <SectionPage key={section.id} section={section} /> : <Result status="warning" title="没有这一页" />)}
-            {route.type === 'part' && (part ? <PartPage key={part.id} part={part} /> : <Result status="warning" title="没有这一页" />)}
+            {project.buildError && <Alert type="error" showIcon title={t.buildNotWritten} description={project.buildError} style={{ margin: 16 }} />}
+            {route.type === 'section' && (section ? <SectionPage key={section.id} section={section} /> : <Result status="warning" title={t.noSuchPage} />)}
+            {route.type === 'part' && (part ? <PartPage key={part.id} part={part} /> : <Result status="warning" title={t.noSuchPage} />)}
             {route.type === 'item' && <ItemPage key={key} kind={route.kind} id={route.id} />}
           </div>
           {showPrompt && (
@@ -182,7 +200,7 @@ export default function Editor({ agentId, onBack }: Props) {
         </div>
       </ProLayout>
 
-      <Drawer title="问题" open={showProblems} onClose={() => setShowProblems(false)} size={480}>
+      <Drawer title={t.problems} open={showProblems} onClose={() => setShowProblems(false)} size={480}>
         <DiagnosticList
           diagnostics={build.diagnostics}
           onOpen={(target) => {

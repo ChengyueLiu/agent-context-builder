@@ -1,3 +1,3 @@
-<系统提醒>
-预算即将用完。请保存当前状态，向用户汇报进展和剩余的工作，等用户决定是否追加预算。
-</系统提醒>
+<system_reminder>
+The budget is almost used up. Save the current state, report your progress and the remaining work to the user, and wait for the user to decide whether to add more budget.
+</system_reminder>

@@ -1,6 +1,7 @@
 import { CloseCircleFilled, WarningFilled } from '@ant-design/icons';
 import { Empty, Flex, Typography } from 'antd';
 import type { Diagnostic, Severity } from '../../core/types';
+import { useLang } from '../i18n';
 
 const ICON: Record<Severity, React.ReactNode> = {
   error: <CloseCircleFilled style={{ color: '#ff4d4f' }} />,
@@ -16,7 +17,8 @@ interface Props {
 }
 
 export default function DiagnosticList({ diagnostics, onOpen }: Props) {
-  if (!diagnostics.length) return <Empty description="没有发现问题" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+  const { t } = useLang();
+  if (!diagnostics.length) return <Empty description={t.noProblems} image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   const sorted = [...diagnostics].sort((a, b) => RANK[a.severity] - RANK[b.severity]);
   return (
     <Flex vertical gap={12}>
@@ -28,7 +30,7 @@ export default function DiagnosticList({ diagnostics, onOpen }: Props) {
             {d.target && (
               <div>
                 <Typography.Link onClick={() => onOpen(d.target!)} style={{ fontSize: 12 }}>
-                  去看看
+                  {t.goSee}
                 </Typography.Link>
               </div>
             )}

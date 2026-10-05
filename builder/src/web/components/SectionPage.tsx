@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { pageFields } from '../../core/outline';
 import type { PromptSection } from '../../core/types';
 import { useEditor } from '../agentContext';
+import { useLang } from '../i18n';
 import { groupOf } from '../util';
 import Page from './Page';
 import PromptFields, { headerHelp, promptPatch, promptValues } from './PromptFields';
@@ -13,6 +14,7 @@ import { useDraft, usePage } from './useDraft';
 export default function SectionPage({ section }: { section: PromptSection }) {
   const { api, project, setProject } = useEditor();
   const { message } = App.useApp();
+  const { t } = useLang();
   const fields = pageFields(project.template, section.id).map((x) => x.field);
   const { draft, set, dirty } = useDraft(promptValues(fields, project.def.prompt));
   const [saving, setSaving] = useState(false);
@@ -22,7 +24,7 @@ export default function SectionPage({ section }: { section: PromptSection }) {
     setSaving(true);
     try {
       setProject(await api.patch({ prompt: patch }));
-      message.success('已保存');
+      message.success(t.saved);
       return true;
     } catch (e) {
       message.error((e as Error).message);
@@ -40,7 +42,7 @@ export default function SectionPage({ section }: { section: PromptSection }) {
       help={headerHelp(section.intro, fields)}
       actions={
         <Button type="primary" disabled={!dirty} loading={saving} onClick={save}>
-          保存
+          {t.save}
         </Button>
       }
     >

@@ -1,6 +1,8 @@
 import { Input } from 'antd';
 import type { ReactNode } from 'react';
 import type { FieldDef } from '../../core/types';
+import { useEditor } from '../agentContext';
+import { useLang } from '../i18n';
 import { anchorId } from '../util';
 import { Help } from './Page';
 import type { Values } from './useDraft';
@@ -8,12 +10,17 @@ import type { Values } from './useDraft';
 /** 提示：这一节写什么，这一格要写到哪几点 */
 export function covers(intro: string | undefined, points: string[] | undefined): ReactNode {
   if (!intro && !points?.length) return undefined;
+  return <Covers intro={intro} points={points} />;
+}
+
+function Covers({ intro, points }: { intro?: string; points?: string[] }) {
+  const { t } = useLang();
   return (
     <div>
       {intro && <div>{intro}</div>}
       {points?.length ? (
         <>
-          <div style={{ marginTop: intro ? 6 : 0 }}>要写到：</div>
+          <div style={{ marginTop: intro ? 6 : 0 }}>{t.covers}</div>
           <ul style={{ margin: 0, paddingInlineStart: 18 }}>
             {points.map((p) => (
               <li key={p}>{p}</li>
@@ -39,12 +46,16 @@ interface Props {
 
 /** 系统提示词里人写的格子：标题（两格以上时）和填写的框 */
 export default function PromptFields({ fields, draft, set }: Props) {
+  const { project } = useEditor();
+  const { t } = useLang();
+  /** 例子跟着内容语言 */
+  const example = (id: string) => project.contentTemplate.prompt.sections.flatMap((s) => s.fields).find((f) => f.id === id)?.example;
   const box = (f: FieldDef) => (
     <div key={f.id} id={anchorId(f.id)} className="prompt-block">
       {titled(fields) && (
         <div className="prompt-block-title">
           {f.label}
-          {f.prompt === false && <span className="prompt-block-note">不进系统提示词</span>}
+          {f.prompt === false && <span className="prompt-block-note">{t.notInPrompt}</span>}
           <Help text={covers(undefined, f.covers)} />
         </div>
       )}
@@ -52,7 +63,7 @@ export default function PromptFields({ fields, draft, set }: Props) {
         autoSize={{ minRows: 3 }}
         value={String(draft[f.id] ?? '')}
         onChange={(e) => set(f.id, e.target.value)}
-        placeholder={f.example ? `例：${f.example}` : undefined}
+        placeholder={example(f.id) ? t.example(example(f.id)!) : undefined}
       />
     </div>
   );

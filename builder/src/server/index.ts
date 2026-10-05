@@ -9,7 +9,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { compile } from '../core/compile';
-import { agentDir, createAgent, isAgentDir, listAgents, loadDef, loadTemplate, patchDef, writeBuild } from '../core/store';
+import { AppError, errorMessage, type Lang } from '../core/phrases';
+import { agentDir, contentLang, createAgent, isAgentDir, listAgents, loadDef, loadTemplates, patchDef, writeBuild } from '../core/store';
 import type { DefPatch } from '../core/types';
 
 const builderRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -20,18 +21,24 @@ const given = process.argv[2] ? path.resolve(process.env.INIT_CWD ?? process.cwd
 const workspace = given ? (isAgentDir(given) ? path.dirname(given) : given) : path.join(builderRoot, '../examples');
 const openFirst = given && isAgentDir(given) ? path.basename(given) : undefined;
 
-/** 读定义、合成、写 build/，返回给前端的完整状态。每次改动后都调用，保证 build/ 与定义同步。 */
-async function snapshot(root: string) {
-  const template = await loadTemplate();
-  const def = await loadDef(root, template);
-  const build = compile(template, def);
+/** 界面语言：前端每个请求都带上，问题提示和出错信息按它写 */
+const uiLang = (req: Request): Lang => (req.get('x-lang') === 'en' ? 'en' : 'zh');
+
+/**
+ * 读定义、合成、写 build/，返回给前端的完整状态。每次改动后都调用，保证 build/ 与定义同步。
+ * 两种语言的大纲都给前端：界面用界面语言那份，生成用 agent 内容语言那份。
+ */
+async function snapshot(root: string, lang: Lang) {
+  const templates = await loadTemplates();
+  const def = await loadDef(root, templates.zh);
+  const build = compile(templates[contentLang(def)], def, lang);
   let buildError: string | undefined;
   try {
     await writeBuild(root, build);
   } catch (e) {
-    buildError = (e as Error).message;
+    buildError = errorMessage(e, lang);
   }
-  return { root, template, def, build, buildError };
+  return { root, templates, def, build, buildError };
 }
 
 /** 读写磁盘的操作排队执行：两个请求同时重写 build/ 会互相删掉对方的文件。 */
@@ -45,7 +52,7 @@ function exclusive<T>(fn: () => Promise<T>): Promise<T> {
 /** 请求里的 agent，必须是工作区里已有的 agent 文件夹 */
 function rootOf(req: Request): string {
   const dir = agentDir(workspace, String(req.params.id));
-  if (!isAgentDir(dir)) throw new Error(`没有这个 agent：${req.params.id}`);
+  if (!isAgentDir(dir)) throw new AppError('noAgent', [String(req.params.id)]);
   return dir;
 }
 
@@ -57,26 +64,27 @@ api.get('/agents', async (_req, res) => {
   res.json({ workspace, agents: await listAgents(workspace) });
 });
 api.post('/agents', async (req, res) => {
-  const { id, name } = req.body as { id: string; name: string };
-  await exclusive(async () => createAgent(workspace, String(id ?? ''), String(name ?? ''), await loadTemplate()));
+  const { id, name, language } = req.body as { id: string; name: string; language?: Lang };
+  const templates = await loadTemplates();
+  await exclusive(async () => createAgent(workspace, String(id ?? ''), String(name ?? ''), templates[language === 'zh' ? 'zh' : 'en']));
   res.json({ workspace, agents: await listAgents(workspace) });
 });
 api.get('/agents/:id/project', async (req, res) => {
   const root = rootOf(req);
-  res.json(await exclusive(() => snapshot(root)));
+  res.json(await exclusive(() => snapshot(root, uiLang(req))));
 });
 api.put('/agents/:id/def', async (req, res) => {
   const root = rootOf(req);
   res.json(
     await exclusive(async () => {
-      await patchDef(root, await loadTemplate(), req.body as DefPatch);
-      return snapshot(root);
+      await patchDef(root, (await loadTemplates()).zh, req.body as DefPatch);
+      return snapshot(root, uiLang(req));
     }),
   );
 });
 app.use('/api', api);
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  res.status(400).json({ error: err.message });
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  res.status(400).json({ error: errorMessage(err, uiLang(req)) });
 });
 
 async function main() {

@@ -1,9 +1,71 @@
-# 帮手：能把活交出去的对象。
+# Helpers: agents or others the agent can hand work to.
 
 items:
-  - id: h1
-    name: 文献调研 agent
-    purpose: 给定主题，返回整理好的相关工作表。
-  - id: h2
-    name: 审稿 agent
-    purpose: 按目标会议的审稿标准审读稿件，返回意见。
+  - id: paper-screener
+    name: Paper screener
+    purpose: Judges a batch of papers against this project's screening criteria and writes one decision file per paper to `library/screening/papers/<id>.json`. For every paper it includes, it adds the structured extraction to the same file.
+    when: |-
+      Screening is batch work, so delegate it.
+
+      - **Pass 1** (title and abstract, stage `screening`): 25 records per helper. An abstract is about 200 words, so one helper per paper buys nothing.
+      - **Pass 2** (full text, stage `eligibility`): 1 paper per helper, because a PDF is a whole session.
+      - **Re-dos**: exactly the ids `check_screening` lists as NO DECISION FILE / INVALID / UNREADABLE, or that `check_extractions` flags. Re-run them with the same brief.
+      - **Late arrivals**: one helper for a PDF the user supplied later.
+
+      A handful of records you can judge in one sitting you may judge yourself, under the same SOP and file format.
+    brief: |-
+      The helper cannot see your system prompt or the skill, so its brief is all it knows:
+
+      - **The stage.** Pass 1: "Screen these records on title and abstract ALONE." Pass 2: "Judge this paper on its FULL TEXT at the eligibility stage; read the PDF at `<pdf>`."
+      - **The records.** Pass 1: up to 25 ids, each with its title and abstract (the record file you name is the scope). Pass 2: the one paper's id, its metadata and its `pdf` path.
+      - **The criteria path.** `library/screening/screening_criteria.json`, with the instruction to read it first. A helper reads a project file only when it is handed the path.
+      - **The output path.** `library/screening/papers/<id>.json`, one file per paper, so that one malformed answer cannot take the batch down with it.
+      - **The rules.** The **Screening SOP** and the **Extraction schema** from the literature-review reference, verbatim. They are its entire behaviour: a fix you want it to follow must go into these texts. In the live case, a fix made only to the criteria file changed nothing.
+      - **The red lines.** Judge only what is in front of it, with no lookups, no other files and no analysis in chat. Never invent or pad an extraction item. Every rejection quotes the paper. Say so in `why` when the abstract is missing or the text is truncated, instead of guessing around it.
+    returns: "One JSON file per paper with the decision keys (`paper_id`, `title`, `stage`, `outcome`, `reason_code`, `why`, `quote`). Included papers also carry `evidence_basis` (`abstract` or `full_text`) and the extraction keys (`summary`, `problems`, `methods`, `assumption_constraints`, `datasets_benchmarks`, `metrics`, `limitations`, `evidence`). The final message is one line: \"done\", the count for each outcome, and any caveat (truncated text, an internal tension in a paper's own evaluation, metadata recovered from the body text)."
+    check: |-
+      - **Trust the files, not the message.** Run `check_screening` (with the seed ids) after every pass, and re-delegate exactly the ids it lists as NO DECISION FILE / INVALID / UNREADABLE. If a count does not move across two passes, investigate it instead of re-delegating again.
+      - **Read the outcome mix.** If `sought` is near the size of the batch, the criteria or the brief are topical. Fix them before paying for full text (seen live: 78% `sought`; after the rule was fixed in the SOP, 15%).
+      - **Read every excluded seed's criterion.** A seed the criteria cut usually means the criterion is wrong.
+      - **Spot-check a few exclusions per pass.** The quote must exist in the abstract or paper and must actually show the failing criterion.
+      - **After Pass 2, run `check_extractions`.** Send each flagged id back to a full-text helper, one paper per helper. An included paper with no extraction is a bug, not a gap.
+      - **Watch for truncated parses.** If a full-text exclusion says the results are missing while the abstract reports them, suspect the parse: open the PDF and re-judge. Measured: a nested results table never reached the parsed text, and the paper flipped from included to excluded.
+  - id: datapoint-generator
+    name: Datapoint generator
+    purpose: Generates one batch of synthetic datapoints (stimuli only) for one strategy and one stratum or variant family, and writes them as JSONL rows to the file it is given.
+    when: In the Dataset step's synthesize stage, after the user agreed to synthetic data, `dataset/synthetic/strategy.md` is written, and you have inspected a prototype batch of about 10 rows yourself. One helper per stratum or variant family.
+    brief: |-
+      - **The batch**: the path to `dataset/synthetic/strategy.md`, which stratum or variant family, how many rows, and its own output file `dataset/synthetic/datapoints.raw.<batch>.jsonl`.
+      - **Read the strategy whole and follow it exactly**: it defines the data unit, the topology (how rows relate), the construction variables and the quality rules, and it was designed for a specific claim.
+      - **Stimuli only.** A datapoint contains the input a system will be given, plus any construction metadata the strategy asks for. It never contains a model's response, a score or a verdict: those are experiment outputs, and mixing them in contaminates the evaluation. No evaluator identity or system configuration either.
+      - **Follow the topology exactly**: if rows come in paired variants, every pair is complete; if strata are specified, respect their proportions.
+      - **Vary the substance, not just the surface**: N rows that differ only in wording are one row.
+      - **Do not copy benchmark items**; keep safety-sensitive content abstract and non-operational unless the user has explicitly authorized otherwise.
+      - **File format**: one JSON object per line, valid JSON, UTF-8, no trailing commas, no commentary in the file. If the file already has lines, keep them and append; never drop existing rows.
+      - **Reply** with one line (see what it returns).
+    returns: "One line: how many rows it wrote, the counts per stratum or variant, and any caveat (for example, a construction variable it could not vary as instructed)."
+    check: "Count the rows in its file against its reply. Read a handful of rows yourself: the topology holds (pairs complete, strata distinct and in proportion), no field carries a response, score or verdict, and rows differ in substance, not just wording. Drop or regenerate a batch that breaks the stimuli-only boundary; `validate_dataset` runs after the batches are merged."
+  - id: component-writer
+    name: Component writer
+    purpose: Writes one component of the research codebase from the method spec and the code README. It cannot run anything.
+    when: "In Implementation's build stage, when the build has many independent components: one helper per component. A small build you write and run yourself."
+    brief: |-
+      - The component: its name and the interface `code/README.md` gives it (file, public function or CLI, inputs and outputs).
+      - What to read: `method/method_spec.md`, `code/README.md`, and any existing files the component depends on.
+      - The files it may write, and nothing else; project-relative paths only.
+      - The rules:
+        - Implement the spec, not your idea of it. Where the spec is silent, choose the smallest reasonable thing and say so; do not invent behaviour the spec did not ask for.
+        - The metrics contract is load-bearing: compute every metric the spec names and write it under exactly the key the spec uses. A renamed metric is a lost result.
+        - Keep it runnable end to end: explicit imports, no placeholder bodies, no `TODO` where behaviour is required, no fabricated data paths (take paths as arguments or read them from the config the spec defines).
+        - Seed anything random and make the seed a parameter.
+        - Start with a short module docstring: what the component does and how it is invoked.
+        - You cannot run code; a separate pass runs and tests what you write.
+    returns: "One line: the files written, the entry point (if any), anything the spec left ambiguous and how it was resolved, and anything it could not implement."
+    check: Run each returned component yourself with `run_code` (an import check, a tiny driver or a unit test) before building on it; check that every metric key it writes matches the README's metrics contract verbatim; treat anything it could not implement as a declared stub until it is fixed.
+  - id: reviewer
+    name: Reviewer agent
+    purpose: Reviews a manuscript against the target venue's review criteria and returns comments.
+    when: When the paper draft is ready, before the handoff package goes to the user.
+    brief: "The paper draft, the Claims list and the evaluation summary, the target venue and its reviewing criteria. It cannot see your system prompt, so pass on the red lines that matter: claims rest only on recorded evidence, and citations must be verified."
+    returns: "Reviewer-style comments: the strongest objections, unsupported claims, missing controls or baselines, and a recommendation."
+    check: Every objection points to a specific claim or passage; address each one or record why not.

@@ -1,36 +1,114 @@
-# 知识：查阅用的资料，需要时才读。
+# Knowledge: reference material, read only when needed.
 
 items:
   - id: lessons
-    name: 经验
-    when: 遇到相似处境，或者要做自己常出错的那类事时。经验只作参考，不当规则；和当前情况不符时，以当前情况为准。属于常出错的那类事，就放慢、多验证，或者先问用户。
+    name: Lessons
+    when: When you face a similar situation, or are about to do the kind of thing you often get wrong. Lessons are for reference only, not rules; when one doesn't fit the current situation, go with the current situation. If it's the kind of thing you often get wrong, slow down, verify more, or ask the user first.
     form: elsewhere
-    location: lessons/（用户批准过的经验，每条一个文件）
+    location: lessons/ (lessons approved by the user, one file each)
   - id: glossary
-    name: 术语表
-    when: 遇到不确定的术语时。
+    name: Glossary
+    when: When you are unsure about a term.
     form: inline
     content: |-
-      - 论断清单：论文要证明的若干条结论，每条附所需的证据。
-      - 去风险实验：花最小代价验证核心想法是否成立的快速实验。
-      - 检查点：阶段之间的关口，通过才进入下一阶段。
+      - **Project brief** (`brief.md`): the problem definition the user confirmed at Alignment.
+      - **Thesis**: the one claim this project tries to refute, chosen at Ideation.
+      - **Claim**: a statement the project sets out to support or refute. Each lives in the Claims list with a status: open, supported, refuted, contested, or superseded.
+      - **Claims list** (`claims.md`): the ledger of everything the project has come to know, each entry with its evidence pointer and pre-registered test.
+      - **Pre-registered test**: the rule, fixed before the results exist, that decides whether a claim is supported.
+      - **Gap**: something the field has not covered or not solved, named in the landscape report.
+      - **Gating checks**: checks run before the main comparison; failing one means the implementation is broken, not that the idea is wrong.
+      - **Corpus**: the screened set of papers the literature review rests on.
+      - **Handoff package** (`deliverables/`): what leaves the project — claims with their evidence, the paper draft, the artifacts worth keeping, verified citations, open questions.
   - id: ml
-    name: 机器学习
-    when: 研究属于机器学习领域时：常用基准与指标、主要会议、什么算贡献、领域内容易犯的错误。
+    name: Machine learning
+    when: "When the research is in machine learning: common benchmarks and metrics, major venues, what counts as a contribution, and common mistakes in the field."
     form: inline
     content: |-
-      ### 常用基准与指标
-      - 语言建模：困惑度；长文本：LongBench、SCROLLS。
-      - 分类：准确率、宏 F1。
+      ### Common benchmarks and metrics
+      - Language modeling: perplexity; long context: LongBench, SCROLLS.
+      - Classification: accuracy, macro-F1.
 
-      ### 主要会议
-      NeurIPS、ICML、ICLR。
+      ### Major venues
+      NeurIPS, ICML, ICLR.
 
-      ### 什么算贡献
-      - 新方法：在公认基准上超过强基线，并有消融说明每个部分的作用。
-      - 新发现：有系统的实验支撑，排除了更简单的解释。
-      - 新基准或数据集：说明现有基准的缺陷，以及新基准如何弥补。
+      ### What counts as a contribution
+      - New method: beats strong baselines on recognized benchmarks, with ablations showing what each component contributes.
+      - New finding: backed by systematic experiments that rule out simpler explanations.
+      - New benchmark or dataset: shows the shortcomings of existing benchmarks and how the new one addresses them.
 
-      ### 容易犯的错
-      - 类别不平衡时准确率会误导，同时报告宏 F1 或按类别的指标。
-      - 小数据集上的提升要报方差：单次运行的提升可能只是噪声。
+      ### Common mistakes
+      - Accuracy is misleading under class imbalance; also report macro-F1 or per-class metrics.
+      - Report variance for gains on small datasets: a gain from a single run may just be noise.
+  - id: experiment-integrity
+    name: Experiment integrity
+    when: When designing, running, or analyzing an experiment, and before you report any number.
+    form: inline
+    content: |-
+      Research code usually runs fine and quietly answers a different question than the one asked. These rules target that failure.
+
+      ### One quantity, one name
+      - Use the same metric name in the plan, the code, the output file, and the analysis. A renamed metric is a lost result.
+      - The direction (higher or lower is better) travels with the name.
+      - Every metric the plan names appears in the output, even when degenerate: an absent key and a zero mean very different things.
+
+      ### A control is a real control
+      - The baseline shares everything except the mechanism under test: same data, order, prompts, seed, scoring code, and version. Otherwise the comparison measures code paths, not the idea.
+      - If the method and the control produce identical numbers, suspect the wiring before concluding "no effect": check how many times the mechanism actually fired.
+
+      ### Every number is traceable and honest
+      - Every result row names the claim it measures and the run that produced it. An unattributable number cannot support a conclusion.
+      - Emit structured output (JSON or CSV), compute the metrics rather than writing constants, and let errors surface: `except: pass` turns a failed run into a successful one.
+      - An empty result is not a success. Record it as failed or partial.
+      - Count and report every item that errored, timed out, or was skipped. A mean over a silently shrinking sample drifts toward whatever is easy to process.
+      - Seed everything random and take the seed as a parameter. Two runs of the same config that disagree beyond tolerance mean you cannot attribute a difference to the mechanism.
+      - Declare every stub, hard-coded return, or TODO in a required path. Code that silently returns a plausible constant has produced a fake result.
+
+      ### Broken implementation or wrong idea
+      Check the gating checks before the main comparison. A failed gate means the implementation is broken: fix it, re-run, and conclude nothing about the claim. Gates passed and no effect is a result about the idea. Conflating the two turns a bug into a refuted hypothesis, or explains a real refutation away as "probably a bug".
+
+      ### What a result does not license
+      A pilot licenses a pilot's conclusion. Scale, generality across domains, and causal mechanism each need their own evidence. State the boundary when you report the number, not when someone challenges it.
+    source: Adapted from merevo's result-integrity and build-discipline references, 2026-08
+  - id: claims-list
+    name: Claims list
+    when: When adding or changing an entry in the Claims list (`claims.md`), and when reading it to decide what is established.
+    form: inline
+    content: |-
+      The Claims list (`claims.md`) is the one ledger of everything the project has come to know. There is no separate place for "claims" and "facts": an entry with no evidence yet *is* a claim to prove, and when evidence arrives the same entry changes status. Never split one thing into two entries.
+
+      ### Entry format
+
+      ```markdown
+      ## F12 — execution feedback improves multi-turn tool selection accuracy
+      status: open
+      source: approach-design
+      test: method/falsification.md#exp1 · rule: F1 on D2 beats B1 by >= 3 points
+      evidence: —
+
+      ## F03 — the field splits into review-text generation vs SLR process automation
+      status: supported
+      source: literature-review
+      evidence: library/landscape/landscape_report.md · library/corpus/CORPUS_PAPERS.csv
+      limits: may miss non-arXiv communities
+      ```
+
+      The heading is `## <id> — <statement>`. The id is what `record_result` takes as `claim_id` and what the package manifest cites.
+
+      - **status**: `open` (no evidence yet) · `supported` · `refuted` · `contested` (evidence both ways) · `superseded` (a better entry replaced it; archived, never deleted).
+      - **source**: the step you learned it in (its skill id). This tag lets any later step filter the list, so no per-step summary file is needed.
+      - **evidence**: project-relative pointers, `path` or `path#anchor`. They are checked mechanically on every write; a pointer that does not resolve comes back to you: fix the pointer or drop the entry to `open`. The check only says the pointer resolves; whether the evidence supports the statement is your judgment.
+      - **test**: for `open` entries, the experiment and its decision rule, written **before** the result exists. Keep it after the status changes: it is the record of what was pre-registered.
+      - **limits**: for degradation entries, what this weakens (`limits: F03 may miss non-arXiv communities`).
+      - **reconsider-if**: for rejected paths, what would make them worth revisiting. This is what makes the list a map instead of a graveyard.
+
+      ### Rules
+
+      - **Write only the statement the evidence can carry.** "Paper X reports Y" is supported by the paper; "Y is true" is not. To assert the latter, open a separate entry with no evidence.
+      - **Never delete an entry.** A replaced entry becomes `superseded`; an entry a new result contradicts becomes `contested`, with a pointer to that result. Edit entries in place; if you rewrite the whole file, check that every id is still there, because a full rewrite silently drops entries.
+      - **Write-in threshold:** only what generalizes beyond a single file goes in the list. Per-file details stay in that file, and the entry points at it.
+
+      ### The Claims list and the plan
+
+      The plan (`update_plan`) says what you are **doing**; the Claims list says what you **know**. One does not imply the other: a step can close with nothing worth writing, and a single search can teach you three things. If real work has added no entry, it produced files but no knowledge; fix that before moving on. Execution counts (runs launched, items processed, what it cost) go in neither: a number written in two places will disagree with itself.
+    source: Adapted from merevo's findings ledger (prompts/lead/judgment.md, tools/findings_check.py, docs/design/working-memory-current.md), 2026-10

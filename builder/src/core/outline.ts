@@ -1,8 +1,12 @@
 // 大纲的查询与填写情况。纯函数，前后端共用。
 
+import type { Lang } from './phrases';
 import type { AgentDef, FieldDef, Item, ListDef, ListKind, NavEntry, PromptSection, Template } from './types';
 
 export const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+
+/** 一个 agent 的内容用哪种语言写。没写的（早先建的）按中文 */
+export const contentLang = (def: AgentDef): Lang => (def.config.language === 'en' ? 'en' : 'zh');
 
 export function listDef(template: Template, kind: ListKind): ListDef {
   const def = template.lists.find((l) => l.kind === kind);
@@ -85,10 +89,13 @@ export function nextId(kind: ListKind, items: Item[]): string {
   for (let n = 1; ; n++) if (!used.has(`${prefix}${n}`)) return `${prefix}${n}`;
 }
 
-export const ID_RULES: Partial<Record<ListKind, { pattern: RegExp; message: string }>> = {
-  skills: { pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, message: '只能用小写字母、数字和连字符' },
-  knowledge: { pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, message: '只能用小写字母、数字和连字符' },
-  tools: { pattern: /^[A-Za-z0-9_-]+$/, message: '只能用字母、数字、下划线和连字符' },
+/** 会成为文件名或程序里名字的标识，要合规。rule 是说明的键，见 phrases 里的 idRule */
+export const ID_RULES: Partial<Record<ListKind, { pattern: RegExp; rule: 'slug' | 'tool' }>> = {
+  workflows: { pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, rule: 'slug' },
+  helpers: { pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, rule: 'slug' },
+  skills: { pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, rule: 'slug' },
+  knowledge: { pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, rule: 'slug' },
+  tools: { pattern: /^[A-Za-z0-9_-]+$/, rule: 'tool' },
 };
 
 /** 左侧目录里的全部页面，从上到下 */

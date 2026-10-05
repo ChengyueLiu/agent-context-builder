@@ -1,93 +1,1462 @@
-# Skill：某一类任务怎么做。正文用到时才加载。
+# Skills: how to do one kind of task. The body is loaded only when used.
 
 items:
-  - id: survey
-    name: 调研定位
-    when_use: 进入调研定位这一步时：检索相关工作，整理相关工作表，提出候选研究问题。
-    goal: 弄清这个方向已经做到哪了，找到值得做、也做得动的研究问题。
-    practice: |-
-      1. 用文献检索工具检索近三年的相关工作，结果先存档再阅读。
-      2. 整理相关工作表：方法、数据集、指标、结论、局限。
-      3. 从局限里归纳出 2 到 3 个候选研究问题，每个附可行性评估。
-    output: 相关工作表和候选研究问题清单，交用户选择。
-  - id: idea
-    name: 核心想法
-    when_use: 进入核心想法这一步时：把研究问题变成可验证的核心想法和论断清单。
-  - id: derisk
-    name: 快速验证
-    when_use: 进入快速验证这一步时：用最小代价的去风险实验检验核心想法是否成立。
-  - id: experiment-design
-    name: 实验设计
-    when_use: 进入实验设计这一步时：把论断清单变成实验方案，跑之前定下支撑与不支撑的标准。
-    goal: 把论断清单变成可执行的实验方案，在跑实验之前就定下什么结果算支撑。
-    practice: |-
-      1. 论断清单逐条列出需要的证据。
-      2. 为每条证据设计实验：数据、基线、指标、对照、消融。
-      3. 写明停止条件和统计检验方法。
-      4. 估算算力和时间，超出预算的标出来交用户决定。
-    output: 实验方案，交用户拍板后进入实验执行。
-    quality: |-
-      - 每条论断都有对应的对照组和必要的消融。
-      - 写明评测指标、数据划分和统计检验方法。
-      - 写明停止条件：什么结果算支撑、什么算不支撑，在跑实验之前定下。
-    pitfalls: |-
-      - 不要只在一个数据集上评测：审稿人会质疑泛化性。至少用两个公认的基准。
-      - 基线用原论文推荐的超参，或者给基线同样的调参预算：否则提升可能只是调参带来的。
-      - 测试集只在最后用一次：反复看测试集，它就变成了验证集。
-    examples: |-
-      论断：方法 A 在长文本上比基线 B 更稳定。
+  - id: alignment
+    name: Alignment
+    when_use: "At the start of every project, before any planning or research: turn the user's request into a confirmed Project brief (`brief.md`). Also when the problem itself must change (narrow, widen or replace the question)."
+    when_not: Not for changing how the work is done (that is a plan change), and not for detailed planning or the literature review.
+    body: |-
+      # Alignment
 
-      - 数据：LongBench 与 SCROLLS 两个基准。
-      - 基线：B 用原论文的超参；另给 A 和 B 相同的调参预算各跑一次。
-      - 指标：各长度区间的准确率及其方差，5 个随机种子。
-      - 支撑的标准：长度超过 8k 的区间，A 的方差显著小于 B（配对检验 p < 0.05）。
-      - 不支撑的标准：任一基准上差异不显著。
-  - id: experiment
-    name: 实验执行
-    when_use: 进入实验执行这一步时：按方案运行实验并记录。
-    practice: |-
-      - 代码遵循项目里已有的风格。
+      Turn an initial research idea into a project that is clear enough, feasible enough and mutually understood enough to start planning. Your job is not to agree with the user; it is to help them define the right project. Act as an experienced research lead: work out what they are actually trying to achieve, form your own judgement, find the ambiguity, unrealistic assumptions and hidden constraints, check cheaply what can be checked, and recommend a more workable framing when the request is weak, too broad, underspecified or infeasible.
 
-      - 实验配置文件放在 `configs/` 下，一个实验一个文件。
-    quality: 关键结果换随机种子至少复跑一次。
-  - id: analysis
-    name: 结果分析
-    when_use: 进入结果分析这一步时：逐条判断论断是否得到支撑，写分析报告。
-    practice: 先看它和基线、和直觉是否一致；不一致时先查代码和数据，再下结论。
-  - id: writing
-    name: 论文写作
-    when_use: 进入论文写作这一步时：把论断和证据写成论文初稿。
-    goal: 把论断和证据写成审稿人读得懂、挑不出硬伤的初稿。
-    practice: |-
-      1. 先按论断清单写提纲，每一节对应一条或几条论断。
-      2. 图表先行，正文围绕图表写。
-      3. 所有数字从结果文件里取，引用从文献库里取。
-      4. 写完对照质量标准逐条自查。
-    output: |-
-      论文用目标会议要求的语言和模板。论文初稿用 LaTeX。
+      The question that ends Alignment: *do we understand this project well enough to responsibly start planning?* Answer it by judgement, not by filling every field.
 
-      - 图表用矢量格式，同一篇论文里配色保持一致。
-    quality: |-
-      - 论文里的每个数字都能在结果文件里找到。
-      - 每条论断在正文里都有对应的图表或表格。
-      - 局限性一节如实写出没有支撑的论断和已知的问题。
+      ## Inputs
+
+      - the user's request and every later message
+      - `materials/` — supplied files; read them before asking anything
+      - `brief.md`, if an earlier session started one: continue from it
+
+      ## The loop
+
+      Understand → frame → resolve uncertainty → assess feasibility → refine the brief → seek correction or confirmation → repeat if needed. It is state-driven, not round-driven: a simple project may finish in one exchange, a difficult one takes several.
+
+      ### 1. Understand the intent
+
+      Separate the user's underlying objective, the proposed research task and the requested deliverable; do not assume they are the same. Ask yourself what decision, artifact, insight, publication or system this research will support, and whether the stated question is the goal or only one way they currently imagine reaching it.
+
+      ### 2. Investigate cheaply
+
+      Use bounded investigation wherever it materially improves the definition or the feasibility judgement: read the supplied files; check that relevant literature appears to exist and roughly how much (a web search, or a few `search_papers` queries); verify that a named dataset, benchmark or repository exists and is accessible; check that the proposed method is plausible; verify a factual assumption the project rests on.
+
+      Keep it light. Do not begin the literature review, collect the dataset, run experiments or implement anything, and write nothing but `brief.md`. Stop when you have enough evidence to make the Alignment decision.
+
+      ### 3. Frame: draft the brief, then expose your interpretation
+
+      Fill the eleven sections (template below) with your best interpretation, and say it plainly: "I understand the project as X, with Y as the main outcome. I am assuming Z." The user should correct your understanding, not write the specification for you.
+
+      ### 4. Ask only decision-relevant questions, all at once
+
+      Test every candidate question:
+
+      - **A.** Would the answer materially change the goal, expected outcome, scope, deliverables, success criteria, feasibility, a major constraint or the high-level approach? If not, do not ask.
+      - **B.** Can you resolve it cheaply and reliably yourself? Then investigate instead.
+      - **C.** Does it depend on the user's intent, preference or authority, on information only they have, or on a genuine trade-off? Then ask.
+
+      These decisions are the user's. In your first presentation, cover each one: either state your inference and its assumption in the brief, or ask.
+
+      - purpose: what decision, artifact or outcome the research supports;
+      - what they expect to receive, and in what form (report, code, data, a draft);
+      - scope preferences: breadth versus depth, the sub-area, the time window, the kinds of sources;
+      - success criteria;
+      - hard constraints: time, budget, compute, access, language, format;
+      - the starting point: materials they have, work already done, references that must be included;
+      - the audience;
+      - priorities and trade-offs, and any call that needs their authority.
+
+      Routine research decisions are yours; never ask them: which databases to search, which query to try first, how to organise preliminary exploration, which obvious methodological convention applies, whether a factual claim can be checked independently.
+
+      Rounds cost the user more than questions do. The first presentation, made after the investigation, carries every question that passes the test (typically three to six, never one at a time), ordered by how much the answer changes the project, each with options and the one you would pick (`ask_user`). The user may skip any; an unanswered question is yours to decide, so decide it and leave that section `inferred`. A later presentation asks only what the answers raised or what the investigation could not settle, never something you could have asked the first time. Most projects need one round of questions, then the understanding and feasibility, then confirmation.
+
+      ### 5. Assess feasibility
+
+      Assess only the dimensions that could change the go / revise / stop decision: evidence availability; data and material accessibility; method viability; capability (tools, models, environment); scope and tractability at the requested breadth and depth; resources (time, compute, tokens); dependencies on the user, permissions, external services or future information; and the critical assumptions that, if false, would invalidate the project.
+
+      Give one verdict, never a numeric score:
+
+      - **Feasible**: a credible path, no major unresolved blocker.
+      - **Feasible with caveats**: workable, but the user must understand meaningful limitations, uncertainties or trade-offs.
+      - **Needs re-scoping**: not sensible as stated, but a modified version is credible. Say what is wrong with the framing, what you recommend changing, and why the revised version is better.
+      - **Not currently feasible**: no credible way to proceed under the current assumptions, capabilities, constraints or evidence. Do not pretend a project is feasible to keep execution moving.
+
+      Give recommendations, not just problems. Instead of "The scope is too broad": "Covering all prompt-injection research and all real-world incidents would make the review too diffuse. I recommend focusing the academic taxonomy on 2022–present work and treating real incidents as a separate evidence stream." Instead of "There is no complete dataset": "There is no authoritative complete incident dataset. I recommend constructing one from A/B/C and explicitly treating completeness as a limitation." Challenge only for a concrete reason; do not manufacture objections to look critical.
+
+      ### 6. Keep the brief alive
+
+      The brief is the state; the conversation only changes it. When the user answers, corrects you, adds a constraint, changes scope, supplies material or rejects a recommendation, update the affected sections; never make them repeat themselves. If new evidence invalidates an earlier assumption, revise and say what changed.
+
+      Once you can say what the project is (normally from the second presentation on), lead with the **Summary**: a few plain sentences on what they want, for what, what they will get, and what you changed in their framing and why. The user reads the summary, not the eleven sections.
+
+      Every section carries a status:
+
+      - `inferred`: your interpretation, not explicitly accepted. It is not a mark of low confidence; a strong inference may stay inferred to the end.
+      - `confirmed`: the user explicitly accepted or supplied it. Text the user wrote is confirmed by definition.
+      - `needs_clarification`: you cannot responsibly settle it without them.
+
+      ### 7. Readiness gate
+
+      Ask for confirmation only when you can responsibly recommend proceeding: the goal is clear enough; the expected outcome and deliverables are understood; scope and major exclusions are clear enough; success criteria are usable; major constraints are known; critical assumptions are visible; feasibility has been assessed enough; no blocker remains unresolved; the high-level approach is credible. Open uncertainty is acceptable when it is stated, does not prevent responsible planning, and the user accepts the risk. A brief with no goal, or with a verdict of *needs re-scoping* or *not currently feasible*, can never be confirmed.
+
+      The high-level approach goes only as far as showing feasibility and shared understanding, e.g. "first map the attack taxonomy, then evaluate representative methods across effectiveness, robustness and deployment assumptions, and finally synthesize the gaps." No phases, subtasks, tool-by-tool plans, dependency graphs or schedules, and no detailed experiment design unless feasibility depends on it. Planning starts after confirmation.
+
+      ### 8. Confirm
+
+      Present the final brief with your recommended framing, the important caveats, and the remaining assumptions and risks, and ask for explicit confirmation: this is a user decision point (see Decision rights). Never infer confirmation from silence, partial agreement, a message that only comments, or the conversation carrying on: a message is a revision, not a confirmation. If the user corrects anything, revise and ask again.
+
+      On confirmation, stamp the brief `confirmed: <date> (vN)`. Confirming the whole brief does not rewrite section statuses: an inference the user accepted stays marked as one. Copy the key lines (question, deliverables, constraints, exclusions) into the memory item Project overview. Alignment ends and planning begins.
+
+      If the user explicitly hands the definition over to you ("skip this, you decide"), ask nothing more. Complete every section, the verdict and the summary from everything gathered, and note at the top that the brief was defined on their behalf and that sections marked inferred were never put to them. That explicit hand-over is their decision; silence never is.
+
+      ### Needs re-scoping / not currently feasible
+
+      1. Explain the concrete blocker.
+      2. Separate hard blockers from uncertainty.
+      3. Recommend the smallest useful change that could make the project viable.
+      4. Write the verdict and the reasoning into the brief.
+      5. Put it to the user (part of the same decision point): re-scope, supply the missing inputs, or stop.
+
+      A not-feasible verdict is a valid outcome. Never build a fake executable project to get out of Alignment, and never start the Literature review on such a brief.
+
+      ## Re-alignment
+
+      Before confirmation, a material change from the user means revisiting the affected sections and the feasibility, not restarting from zero. After confirmation, re-align only when the problem itself must change: the question has to narrow, widen or be replaced (for example, the literature shows it is already answered, or the data it needs cannot exist). Present the revised brief as a new version, with what changed and why. It replaces the confirmed one only when the user confirms it (decision point 1 again). Execution drift, where the work has wandered from the question as written or the next step is not worth its cost, is a plan correction, not a re-alignment: name what is off and what it is off from, and fix the plan.
+
+      ## `brief.md` template
+
+      ```markdown
+      # Project brief
+      > (only if handed over) Defined on the user's behalf: the user skipped alignment. Sections marked (inferred) were never put to them.
+
+      ## Summary
+      <a few plain sentences: what they want, for what, what they get, what you changed in their framing and why>
+
+      ## Goal (inferred | confirmed | needs clarification)
+      <the question or objective the project fundamentally addresses>
+      ## Expected Outcome
+      <what the user expects to know, decide, demonstrate or achieve by the end>
+      ## Scope
+      ## Out of Scope
+      ## Deliverables
+      <the concrete outputs the user will receive>
+      ## Success Criteria
+      <what would make the project useful and acceptable>
+      ## Constraints
+      <hard limits: time, budget, data, compute, method, source type, format, access>
+      ## Key Assumptions
+      <treated as true, not yet established>
+      ## Feasibility & Risks
+      **Feasible with caveats.** <the reasons, uncertainties, dependencies and failure modes; do not restate the verdict>
+      ## High-level Approach
+      <a credible shape, not a plan>
+      ## Open Questions
+      <only those that materially affect the definition or feasibility; in the confirmed version, headed "accepted as unresolved">
+
+      *confirmed: 2026-10-06 (v1)*
+      ```
+
+      In the confirmed version, label each section that is still inferred "(inferred, accepted as such)" and each left open "(left open)".
+
+      ## Done when
+
+      You can answer every one of these:
+
+      - What are we trying to accomplish?
+      - What will the user actually receive?
+      - What is included and excluded?
+      - What would count as success?
+      - Which assumptions and constraints matter?
+      - Is there a credible path to doing this?
+      - What are the major risks or caveats?
+      - Has the user explicitly agreed that this is the project they want?
+
+      If any answer is missing, Alignment is not complete.
+
+      ## Pitfalls
+
+      - Agreeing by default or flattering the user's framing: your value is independent judgement.
+      - Asking questionnaire-style questions you could infer or investigate: the user should correct, not specify.
+      - Asking one question per round: every round keeps the user waiting for what one visit could have settled.
+      - Asking the user to make routine research decisions: those are yours.
+      - Turning Alignment into planning, or starting large-scale research before confirmation: the project is not defined yet.
+      - Hiding feasibility problems or manufacturing confidence: a falsely feasible project fails later, at a higher cost.
+      - Silently narrowing or altering the user's goal: every change to their framing is stated in the summary, with its reason.
+      - Marking the brief ready because every field has text: readiness is judgement, not form completion.
+      - Treating a reply that only comments, a non-answer or silence as confirmation: only explicit confirmation of the brief counts.
+  - id: literature-review
+    name: Literature review
+    when_use: "After the brief is confirmed, to map existing research on its question: approaches, baselines, evaluation practice, what is established or open. Again after Ideation, scoped to the thesis's neighbourhood, and to screen in a paper that arrives late."
+    when_not: Not for checking a candidate idea's novelty (Ideation) or finding datasets (Dataset).
+    body: |-
+      # Literature review
+
+      Give the project a grounded picture of existing research: the major approaches and how they relate, the papers that represent them, the field's baselines and evaluation practice, what has been found and where results conflict, and what remains open. Every important claim must be traceable to the paper it comes from. The product is understanding the project can act on, not a corpus for its own sake. You decide which searches to run, which papers to take, how deep to go and when to stop.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | question, scope, exclusions, time window | `brief.md` (confirmed) |
+      | the user's own papers (the seeds) | `materials/`. Read them first: they say what the field calls itself |
+      | an earlier pass | `library/`. Build on it; never restart it |
+      | the selected thesis and its bar (second pass only) | `method/position.md` |
+
+      You are blocked only when there is no confirmed question. That is an Alignment gap, not a retrieval problem: say so and stop. Each stage leaves a file the next one reads. When resuming, treat every artifact that exists and passes its checks as done, and continue from the first one that is missing.
+
+      ## Depth
+
+      The purpose sets the corpus size, not appetite. There is no target number: the count is an outcome you report with the stopping condition that produced it. The first pass uses the **grounding** profile (enough to frame the problem for Ideation: what is established, what is open, which baselines and benchmarks exist). The thesis-scoped pass uses **related-work**. When papers are themselves the object of study, use **empirical-study**, where full text is a hard inclusion criterion. Profiles, stopping conditions and database choice are in the reference. If the user pins a number, honour it exactly and report the coverage it bought.
+
+      ## Stage 1: Scope
+
+      At the top of the landscape report, write a few lines covering:
+
+      - what this pass must establish and what will be done with it;
+      - the profile;
+      - the time range (a default you chose is reported, not asked);
+      - the exclusions, taken from the brief's Scope and Out of Scope rather than re-derived.
+
+      Time bounds apply to the search and to forward snowballing. Backward snowballing ignores them, because the classics a field stands on are old.
+
+      ## Stage 2: Seeds, then search
+
+      1. **Seeds first.** Run `merge_local_papers` to fold the PDFs in `materials/` into the corpus. Read their titles, abstracts and keywords before you write any query. Keep their ids: they are your vocabulary and the calibration baseline for `check_screening`. If `materials/` is empty, say so in the report.
+      2. **One broad pass on crossref** with a plain sentence describing the topic. Read the returned titles next to the seeds': that is how this field talks.
+      3. **Write the strings in the field's words.** Write one primary string (2–3 distinct concepts joined by AND) and one or two OR-expanded strings. Name the subject, not the tool: a tool name retrieves everyone who used the tool. On arXiv, `ti:"term weighting" OR ti:"BM25"` came back ~90% on topic, against ~20% for `ti:"BM25" OR ti:"TF-IDF"`.
+      4. **Check the strings against the seeds.** A string that would not retrieve the user's own papers is aimed elsewhere. Fix it before it costs a sweep.
+      5. **Run `search_papers`** once per database per string, tagged, in that database's syntax. On arXiv bare words read as OR: 357,859 hits, against 31 for `abs:"BM25" AND abs:"TF-IDF"`. Use a typed-out sentence only on crossref. Run a handful of strings on the databases the reference argues for. Results fold into `library/corpus/records.csv`, deduplicated on write, and every query lands in `records/searches/`. A database that did not run (missing key, blocked scraper, rate limit) is a coverage gap to report.
+
+      Refine the strings as you learn the field's vocabulary.
+
+      ## Stage 3: Screen in two passes
+
+      Screening is batch work, so delegate it to `paper-screener` helpers. You own the criteria, the brief, and the interpretation of the numbers.
+
+      1. **Run `backfill_abstracts` first.** Publishers often register no abstract with crossref: on one sweep 27% of crossref records had an abstract, against 100% on arXiv. A title-only judgement errs toward keeping the paper, which turns each missing abstract into a full-text download. The lookup recovered 13 of 18.
+      2. **Write `library/screening/screening_criteria.json`.** Include EC-coded inclusion and exclusion criteria taken from the brief, and how deeply this profile needs each paper read.
+      3. **Pass 1: abstracts, 25 records per helper.** The record file you name is the scope, for example the snowball candidates or a subset. There are three outcomes, and the third is expensive:
+
+         | Outcome | When | Costs |
+         |---|---|---|
+         | `excluded` | fails a criterion: EC code and a quote | an abstract |
+         | `included` | belongs, and the abstract already says where it sits | an abstract |
+         | `sought` | you will **discuss** it, so you need the full text | a whole session |
+
+         To choose between the last two, ask whether the review will discuss this paper or only cite it. Spend `sought` on exemplars of a category, contested claims, benchmarks others are measured by, and genuine ambiguity on a criterion. "It's relevant" is not enough. `included` on the abstract is the normal outcome when mapping a field.
+      4. **Run `check_screening` after the pass.** Re-delegate exactly the ids it lists as NO DECISION FILE, INVALID or UNREADABLE. If a count stops moving across two passes, investigate it instead of re-delegating.
+      5. **Size Pass 2 before you pay for it.** Expect tens of papers in a grounding pass and low hundreds at most in any pass. A full-text set near the size of the corpus means Pass 1 sorted rather than filtered. Fix it in Pass 1: tighten the criteria, put the discuss-or-cite rule in the brief, and re-screen the `sought` set. Half an hour of abstracts beats five hours of PDFs.
+      6. **Pass 2: full text, 1 paper per helper.**
+         - Run `download_papers(input_csv='sought', output_dir='library/corpus/papers')`. It gathers the `sought` set from the decision files itself and writes `library/corpus/sought.csv` with a `pdf` column; never build that list yourself.
+         - A paper whose PDF never arrives gets `not_retrieved` and is listed in `download_report.md`.
+         - Brief one helper per fetched paper at the eligibility stage, with its `pdf` path. `parse_pdfs` turns many PDFs into text.
+         - The helper's decision overwrites the Pass 1 file. An included paper carries its extraction in the same file.
+      7. **The pass is done when `check_screening(seed_ids=[...])` reports `sought=0`**, not when the helpers say they have finished. Every `sought` paper must end as included, excluded or `not_retrieved`. If you stop early, stop on the record: how many papers are unresolved, why you stopped, and what that costs the conclusion.
+      8. **A seed that got excluded is not an exclusion.** The user chose that paper, so the criteria are what changed. Read which criterion cut it, then either fix the criterion or say in the report why the exclusion stands.
+      9. **`not_retrieved` papers are reported, never silently excluded.** These are relevant on the abstract but the text could not be had. List them in the report so the user can supply the PDFs.
+      10. **Run `prisma_report(corpus_csv='library/corpus/records.csv')`.** It writes `library/screening/prisma.md` (the funnel) and `library/corpus/CORPUS_PAPERS.csv` (the included papers, the one corpus table everything downstream reads). Both are computed: never edit them by hand, and re-run after any screening change.
+      11. **Run `check_extractions`.** It confirms that every included paper has its extraction. Send the flagged ids back to a full-text helper, and repeat until the report is clean or the residue is explained. A PDF that never parsed leaves its paper invisible downstream; count it as a degradation.
+
+      ## Stage 4: Snowball until a round adds nothing
+
+      Run `snowball_papers(mode=..., input_csv='library/corpus/CORPUS_PAPERS.csv', existing_corpus_csv='library/corpus/records.csv', output_dir='library/snowball')`. It expands from the screened included set. Choose the mode by profile: backward for grounding, backward plus light forward for related-work, both for empirical-study.
+
+      Candidates are sorted by `co_citation_count`, the number of included papers that lead to each one. This is the signal keyword search cannot give: a paper reached from four included papers is load-bearing even if it contains none of your query terms. Screen the candidates as in Stage 3, re-run `prisma_report`, then snowball again from the corpus you now have.
+
+      - **Stop when a full round adds nothing new that survives screening**, and say which round went dry: that sentence is the evidence the expansion was finished, not abandoned. If the profile's "enough" already holds while rounds still yield, stop and say you stopped early on purpose.
+      - **Each round should be less central than the last.** A round as strongly co-cited as the first means the search missed a whole sub-direction. Say so.
+      - **If a round goes dry while the corpus is still thin, go back to Stage 2 instead of snowballing again.** Snowballing only reaches papers connected to the ones you hold, so another round re-explores the same wrong neighbourhood. Widen the search instead: new vocabulary from the titles you have, a database that silently returned nothing (check `search_errors.log`), or a different unit of search (method versus application). Record that you widened and why.
+      - **Report the yield and the unresolved rows.** The yield is the included papers the expansion added that the search missed, which measures how blind the search was. Unresolved rows are papers with no citation record. A half-run expansion is degraded, not coverage.
+
+      ## Stage 5: Read, then synthesize
+
+      1. **Read existing surveys first** (in `materials/`, the corpus, and a web search for recent ones), before you synthesize. Record each in `library/landscape/related_review_table.csv`: year, scope, subtopics covered, taxonomy quality, evidence transparency, limitations. Your landscape positions itself against them rather than duplicating them.
+      2. **Read in full the papers the project leans on**: the representative work for each approach, the baselines, and the papers whose numbers or methods you will compare against. Their extractions are already in the decision files, so do not re-extract. A claim the project builds on is read in the paper that made it, never inferred from an abstract or from another paper's summary.
+      3. **Write `library/landscape/landscape_report.md`** for a reader deciding what to research. It has these sections:
+         1. *Scope & coverage*: the Stage 1 lines; the databases and strings you ran and why; the funnel headline; the snowball yield, the round that went dry, and the unresolved rows; every degradation (skipped source, `not_retrieved`, parse failure) with its impact.
+         2. *State of the field*: the 5–10 things the evidence firmly establishes, each with anchor papers.
+         3. *Approaches*: the taxonomy, how the families relate, a representative paper for each, maturity and trade-offs.
+         4. *Baselines & evaluation practice*: the baselines and what they are evaluated on; the datasets and metrics in use, and what nobody evaluates.
+         5. *Contested points*: each one with the papers on both sides and why they disagree.
+         6. *Trends*: rising and dying directions, backed by counts per year.
+         7. *Gaps*: coverage gaps (topics, methods, periods or datasets the surveys miss) and methodological gaps (no cross-method comparison, weak evaluation), each with its basis and why it matters.
+         8. *Positioning hooks*: the gaps this project could claim, and the crowded areas to avoid.
+
+         Every claim that matters names its paper id and the place in the paper it comes from. Keep evidence and interpretation distinguishable.
+      4. **Write `library/landscape/gap_summary.md`**, the compact gaps-only digest that Ideation and Approach design read first. List the gaps as G1, G2, …, each with:
+         - its kind;
+         - its basis, for example "survey X lacks Y, while the corpus holds Z papers on Y since year W" (never novelty by assertion);
+         - what is contested;
+         - what it means for this project's question.
+      5. **Add entries to the Claims list** for the established findings and contested points the project builds on. Give each the status `supported` or `contested`, the source `literature-review`, and evidence pointing to the report's anchor and the paper ids.
+
+      ## Stage 6: Validate
+
+      Check each of these. If one fails, go back to the stage that fixes it.
+
+      - Every major direction the field would recognise is represented.
+      - The important baselines are named, with what they are evaluated on.
+      - The claims the project relies on have primary-source evidence.
+      - No obviously close work is missing: search for it once more.
+      - Evidence and interpretation are told apart.
+      - What you did not cover, could not obtain or chose to leave out is stated with its coverage impact.
+      - `sought=0`, and what happened to every seed is explained.
+
+      ## The thesis-scoped pass (after Ideation)
+
+      Once Ideation has picked a thesis (`method/position.md`), everything downstream is scoped to it. Approach design stays blocked until the thesis has been grounded against the literature. Use the related-work profile, in the same `library/`: the same `records.csv` and decision files, with the criteria file extended to cover the thesis's neighbourhood.
+
+      1. **Scope.** State the thesis's mechanism in one sentence. Name the neighbouring lines of work it must be positioned against, and the baselines and benchmarks its bar names.
+      2. **Search** for the mechanism and its components in the field's words. Then snowball one or two rounds, backward-weighted, from the closest papers.
+      3. **Screen** as in Stage 3. The closest prior work and every baseline the bar names are `sought`: read them in full.
+      4. **Write a new version of the landscape report** with a *Thesis neighbourhood* section. It covers:
+         - the closest prior work, each with how it differs from the thesis;
+         - each neighbouring line, with its representative and why it sits next to the thesis;
+         - the baselines, with their reported numbers, their settings, and where in the paper those appear;
+         - the benchmarks and metrics the thesis will be measured on.
+
+         Update `gap_summary.md` with the gap the thesis attacks: confirmed, narrowed or contradicted.
+      5. **If the thesis turns out to be already done or already refuted**, record that in the Claims list and return to Ideation. Picking a replacement thesis is a user decision point (see Decision rights).
+
+      This pass is complete when every neighbouring line has a representative, you can say why each one sits next to the thesis, and nothing adjacent is unaccounted for.
+
+      ## Late arrivals
+
+      When the user uploads a PDF later, re-run `merge_local_papers`. Do not guess at `conflict` rows (same title, different DOI): leave them unmerged and list them in the report. If the PDF resolves a `not_retrieved` record, brief one full-text helper with its `pdf` path, then re-run `prisma_report`.
+
+      ## Outputs
+
+      | File | Contents |
+      |---|---|
+      | `library/landscape/` | `landscape_report.md`, `gap_summary.md`, `related_review_table.csv` |
+      | `library/corpus/` | `records.csv`, `CORPUS_PAPERS.csv` (generated), `papers/` with `download_report.md`, `sought.csv`, `LOCAL_MERGE_LOG.csv` |
+      | `library/screening/` | `screening_criteria.json`, `papers/<id>.json` (one per paper, decision plus extraction), `prisma.md` (generated) |
+      | `library/snowball/` | the candidates of each round |
+      | `records/searches/` | `searches.csv`, the raw per-database CSVs, `search_errors.log` |
+
+      ## Done when
+
+      The validation checks hold, and the report answers with evidence: the major approaches and the work that represents them; the baselines and evaluation practices; what has been found and where findings conflict; what is still open; and what all of that means for the current question. Remaining uncertainty is stated, not hidden. When further search is unlikely to change that picture, stop.
+
+      ## Pitfalls
+
+      - **More papers is not more understanding.** Cover each approach with its best-known work.
+      - **Spraying databases.** Coverage is argued: say which databases and strings you ran, and why those.
+      - **Treating `sought` as "it passed".** Seen live: 687 of 882 papers came back `sought` and queued a five-hour full-text pass. The criteria were topical, which filters nothing in a field of 800 such papers, and most of that reading would only have supported a citation.
+      - **Reporting the pass done while papers are still `sought`.** Seen live: a crashed downloader left 43 papers in limbo, 13 of them arXiv PDFs that fetch in seconds, and the phase was reported complete. The funnel overstated its coverage.
+      - **Screening papers into an empty Claims list.** Seen live: 87 papers were screened and nothing learned was recorded, so the project accumulated artifacts rather than knowledge.
     reference: |-
-      ## 科研写作指南
+      # Literature review: reference
 
-      - Gopen & Swan, *The Science of Scientific Writing*：读者对句子位置的预期，以及如何据此组织段落。
-      - 目标会议的作者指南与审稿表。
+      ## 1. Depth profiles: how much literature is enough
+
+      There is deliberately no target number. A number becomes something to hit: you stop at 25 with the field half covered, or you keep going to 100 because the range said so. What decides "enough" is the stopping conditions below and whether the report's argument holds. Where an order of magnitude appears, it is there to catch a wrong ballpark; being outside it is something to explain, not something to fix by adding papers.
+
+      | Profile | When | Search + snowball | Enough is when | Ballpark | Screening depth |
+      |---|---|---|---|---|---|
+      | grounding | first pass: framing the problem, feeding Ideation | the primary string on the fewest databases that cover the domain; backward snowball only | you can state what is established and what is open, and nothing you find changes that statement | tens | abstract level; full text only for the papers you will read in full |
+      | related-work | thesis-scoped pass: positioning the contribution | the primary string plus one secondary; backward plus light forward | every neighbouring line of work the contribution must be positioned against has a representative, and you can say why each sits next to it | tens | abstract plus availability; the result is a grouped, annotated set |
+      | empirical-study | the brief makes papers themselves the objects of study | precision over recall; snowball both ways, take the top papers by `co_citation_count` | every paper left is one you would defend analysing, and you hold its full text | tens, and fewer than you expect | full eligibility pass. Full text is a hard inclusion criterion: `not_retrieved` papers are reported and excluded from the analysis, never silently dropped |
+
+      ### Stopping conditions (all profiles)
+
+      Dry is not the same as done. A round that adds nothing tells you that you have exhausted the citation neighbourhood of the papers you hold, not that they were the right papers.
+
+      | | The profile's "enough" holds | It does not hold |
+      |---|---|---|
+      | **Snowball still yielding** | Done. More rounds buy breadth you did not need, so stop and say you stopped early on purpose. | Keep going: the loop is working. |
+      | **Snowball has gone dry** | Done, and well evidenced: the citation graph agrees you have the core. | **Do not stop, and do not snowball again. Go back to the search.** |
+
+      The bottom-right cell is a verdict on the search, not on the field. What helps:
+
+      - **Different vocabulary.** The sub-direction you missed calls itself something you did not guess, and the titles you already have are where to find its words.
+      - **A database you skipped.** Check `search_errors.log` first: a source that silently returned nothing is the cheapest gap to close.
+      - **A different unit of search.** Search by method when the field publishes by application, or the reverse.
+
+      Then screen and snowball from the widened corpus, and record what you did, for example: "round 2 went dry at 34 included, below what this review needs; re-searched with `agentic workflow` after seeing it in six titles."
+
+      ### How many rounds
+
+      - **grounding**: backward only; stop as soon as the problem statement holds.
+      - **related-work**: one or two rounds, backward-weighted. You need every neighbouring line represented, not every paper in each line.
+      - **empirical-study**: usually one round, stopped deliberately. The first round's top papers by `co_citation_count` are the ones worth studying. Dry and thin here more often means the criteria are too tight than that the search was.
+
+      Record which condition stopped you, and if you widened the search, what you widened and why.
+
+      ### Two numbers every pass reports
+
+      - **The PRISMA funnel** (`library/screening/prisma.md`), recomputed and never written by hand, including the not-retrieved box.
+      - **Snowball yield**: the included papers the expansion added that the keyword search missed, which measures how blind the search was. Report the unresolved rows next to it.
+
+      ### What the report must argue
+
+      - grounding: "these papers are enough to frame the problem; here is what they establish and what they leave open."
+      - related-work: "these are the right papers to discuss for this contribution: grouped, one line each on why, nothing adjacent unaccounted for."
+      - empirical-study: "these are the most study-worthy papers, and every one has retrievable full text."
+
+      A corpus that hit a count but cannot answer its profile's question is not done. A corpus half the expected size that can answer it is done. Report the count either way, together with the stopping condition that produced it.
+
+      ## 2. Database selection
+
+      Coverage is argued, not sprayed. Pick the smallest set of databases that lets you claim systematic coverage of the topic's domain, and name what you left out and why. Every extra database costs time and adds deduplication noise.
+
+      ### The query decides more than the source
+
+      Every keyword backend reads a bare run of words as OR, then ranks by something that favours popular papers. Measured on arXiv:
+
+      | Query | Hits | Top result |
+      |---|---|---|
+      | `BM25 TF-IDF small collection` | 357,859 | an unrelated Indonesian MLP baseline |
+      | `all:BM25 AND all:"TF-IDF"` | 31 | all on topic |
+      | `abs:"BM25" AND abs:"TF-IDF" AND abs:"test collection"` | 1 | exactly the target |
+
+      So read before you write queries, and write each one in its database's syntax. `search_papers` rejects a typed-out sentence everywhere except crossref, which matches bibliographic phrases and does better with the long form.
+
+      ### Availability tiers
+
+      | Tier | Databases | Notes |
+      |---|---|---|
+      | Keyless, published work only: **start here** | crossref | DOI registrations: journal articles, conference proceedings, book chapters. It ranks by text relevance, never by citation count. The nine-word sentence that made OpenAlex return a genomics paper returns 9/10 on-topic SIGIR papers here. Non-papers are filtered out by type. `CROSSREF_EMAIL` (optional) puts you in the polite pool. |
+      | Keyless, preprints and citation graph | arxiv, semantic_scholar | arXiv reads bare words as OR, so field prefixes (`abs:`, `ti:`, `all:`) and capitalised `AND`/`OR`/`NOT` are mandatory. Semantic Scholar works without a key but under strict rate limits (`S2_API_KEY` lifts them); it has the best reference coverage for arXiv preprints, so it stays the primary source for snowballing. |
+      | Fragile: gap-fill only, off by default | google_scholar, acm | Scraping-based, so blocks are normal; never let them carry coverage. The Google Scholar scraper (`scholarly`) is not installed and can open a browser when blocked: do not install or run it unless the user explicitly asks. |
+      | Key required | ieee (`IEEE_API_KEY`), springer (`SPRINGER_API_KEY`), elsevier (`ELSEVIER_API_KEY`) | Free registration. Skipped with a logged warning when the key is unset, and that skip is a coverage gap you report. |
+
+      OpenAlex is not a keyword source. Its search scores fold in citation count, so an imprecise query returns the most-cited works in science: it ranked a 9,929-citation genomics paper first for a retrieval-evaluation query. It survives only as an ID-based fallback inside snowballing, where it carries no reference lists for arXiv preprints (measured 0/105). A snowball that fell back to it is degraded.
+
+      ### Domain → databases
+
+      | Topic domain | Include | Why |
+      |---|---|---|
+      | CS / ML / AI / NLP | crossref + arxiv (+ semantic_scholar) | crossref for the published record; arXiv for the last 18 months, since in a preprint culture the newest relevant work is arXiv-only |
+      | Software engineering | + ieee, acm | the top venues (ICSE, FSE, TSE, TOSEM) live in the IEEE and ACM libraries |
+      | Security / systems | crossref + arxiv + ieee | a mix of preprint and venue culture |
+      | Journal-heavy or interdisciplinary (medicine, HCI-adjacent, SE journals) | crossref + springer, elsevier | publisher APIs for what is paywalled |
+
+      ### Procedure
+
+      1. Classify the topic's domain from the brief.
+      2. Take that row of the mapping and keep only what is usable now (keyless databases plus those whose keys are set).
+      3. Record a mapped database you cannot use as an explicit coverage gap, with the remedy ("configure IEEE_API_KEY and re-run the search for SE-venue coverage").
+      4. If you are about to run more than 5 databases, justify each extra one: "more" is not "systematic".
+
+      ### Measured precision (2026-08-04, topic: BM25 vs TF-IDF on small collections; judged by reading the top-10 titles)
+
+      | Source + query | On topic |
+      |---|---|
+      | crossref, full sentence | 9–10/10 |
+      | arxiv, `ti:"term weighting" OR ti:"BM25"` | ~9/10 |
+      | arxiv, `abs:"BM25" AND abs:"TF-IDF"` | ~3/10: most merely use both as baselines |
+      | arxiv, `ti:"BM25" OR ti:"TF-IDF"` | ~2/10: Uzbek summarisation, pathology reports, COVID conspiracies |
+      | semantic_scholar, keyless | 0: rate-limited after backoffs of 0/10/30/60 s |
+
+      Two lessons: a tool name retrieves everyone who used the tool, while a subject name retrieves the people who study it; and keyless Semantic Scholar is a bonus, not coverage.
+
+      ## 3. Screening SOP (paste verbatim into every paper-screener brief)
+
+      You are deciding whether papers belong in this project's corpus, against the criteria in the file you were given. Judge only what is in front of you: there is nothing to look up and no next step to plan. Write one JSON file per paper at the path named for it. Write nothing else: no other files, no analysis in chat.
+
+      **Stages**
+
+      | Stage | Question | What you are given |
+      |---|---|---|
+      | `screening` | Does it study the subject, or merely use it? | title + abstract |
+      | `retrieval` | Is the full text in hand? | settled in code, never by you |
+      | `eligibility` | Does the evidence meet the criteria? | the full text |
+
+      `screening` is where most papers are excluded and where judgement matters. "Uses TF-IDF as a feature in a sentiment classifier" is not a study of term weighting: say that, quoting the words from the abstract that show it.
+
+      **Outcomes**
+
+      - `excluded`: fails a criterion. Needs a `reason_code` and a quote.
+      - `included`: meets the criteria on the evidence you have. At `screening` that evidence is the abstract, and for most papers it is enough.
+      - `sought`: the criteria cannot be settled without the full text, or the review will discuss this paper rather than merely cite it.
+      - `uncertain`: genuine doubt after looking, not work left undone. Say what would settle it. It is carried downstream as included. Use it rarely.
+      - `not_retrieved` is never yours to write: whether a full text is in hand is a file check, done in code.
+
+      **`sought` is the expensive outcome.** It is a request to spend a whole reading session on the paper. Ask: will the review discuss this paper, or only cite it?
+
+      - **Discuss it**: the review will say what it did, how it was evaluated, or why its claim is disputed → `sought`. This covers exemplars of a category, papers whose results are contested, benchmarks others are measured against, and papers whose abstract genuinely leaves a criterion open.
+      - **Cite it**: it belongs, the abstract already establishes where it sits, and it will appear as a citation at the end of a sentence → `included`. Write the extraction from the abstract and set `"evidence_basis": "abstract"`, so nothing downstream mistakes it for a full-text reading.
+
+      `included` on the abstract is the normal outcome when mapping a large field: a paper is included for its position in the map, and an abstract usually establishes that position.
+
+      **Three rules that make a decision trustworthy**
+
+      1. **Decide before you summarise.** Having read a long paper is not a reason to include it, and writing the summary first is how that bias gets in.
+      2. **A rejection quotes the paper**: a section number, a sentence. An exclusion nobody can check is an exclusion nobody will believe.
+      3. **Judge the paper you were given, not the paper you expected.** If the abstract is missing or the text looks truncated (a results section without its numbers, a section that stops partway), say so in `why` rather than guessing around it.
+
+      Each paper gets one decisive check, and you stop at the first failure, so there is one reason, not a list.
+
+      **The file**
+
+      ```json
+      {
+        "paper_id": "arxiv:2407.03618",
+        "title": "BM25S: Orders of magnitude faster lexical search",
+        "stage": "screening",
+        "outcome": "excluded",
+        "reason_code": "EC1",
+        "why": "compares implementation speed of one BM25, not weighting schemes",
+        "quote": "§1: we do not change the ranking function"
+      }
+      ```
+
+      Required: `paper_id`; `stage` is `screening` or `eligibility`; `outcome` is `excluded`, `included`, `sought` or `uncertain`; `why` is not empty; every exclusion has a `reason_code`. A file that breaks these rules is not counted and comes back to you.
+
+      When a paper is included, add `evidence_basis` (`abstract` or `full_text`) and the extraction keys (next section) to the same object. An excluded paper stops at the stage where it failed; nothing more is asked of it. Write valid JSON only: UTF-8, no comments, no trailing commas.
+
+      Your final message is one line: "done", the count for each outcome, and any caveat worth attention (truncated text, an internal tension in a paper's own evaluation, metadata you had to recover from the body text).
+
+      ## 4. Extraction schema (paste verbatim into every paper-screener brief)
+
+      Ground every item in what the paper actually says; never invent and never pad. A paper that genuinely has no datasets (a position paper, say) gets an empty array: empty is correct, filler is not. At the eligibility stage, read the whole full text, not just the abstract; a long paper takes several reads.
+
+      Keys added to the decision object:
+
+      - `evidence_basis`: `full_text`, or `abstract` (only for a cite-only inclusion at `screening`).
+      - `summary`: at most 3 sentences on what the paper does and shows.
+      - `problems` (≤6): `{name, description, confidence}`, the research problems the paper addresses. `name` is a short canonical phrase the field would recognise; `description` is one sentence.
+      - `methods` (≤6): `{name, description, confidence, is_proposed, targets, requires_constraints, relaxes_constraints, evaluated_on, measured_by}`.
+        - `is_proposed` is true only for the paper's own novel contribution(s).
+        - `targets`: the names of the problems it attacks.
+        - `requires_constraints`: the assumptions or constraints it needs.
+        - `relaxes_constraints`: the assumptions it removes compared with prior work.
+        - `evaluated_on`: dataset or benchmark names.
+        - `measured_by`: metric names.
+
+        Every name in these nested lists must also appear in the matching top-level array.
+      - `assumption_constraints` (≤6): `{name, description, confidence}`.
+      - `datasets_benchmarks` (≤8): `{name, description, confidence}`, using the community's canonical names ("ImageNet", not "the image dataset").
+      - `metrics` (≤6): `{name, description, confidence}`.
+      - `limitations` (≤6): `{name, description, confidence}`: what the paper itself admits, plus what its evaluation visibly cannot claim.
+      - `evidence` (≤6 strings): short verbatim quotes (≤300 characters each) supporting the most load-bearing items above.
+
+      Discipline:
+
+      - **Canonical names.** Use the vocabulary the paper and its field use, so that the same concept extracted from different papers lands on the same name.
+      - **Confidence.** 1.0 only for things stated verbatim, about 0.7 for a clear paraphrase. Below 0.5, leave the item out.
+      - **Checked mechanically.** The file is schema-checked (`check_extractions`), and a malformed file comes back for a redo.
+  - id: ideate
+    name: Ideation
+    when_use: "After the literature review: generate candidate theses, each with a falsifiable hypothesis and the cheapest experiment that could refute it; screen them; novelty-check the survivors with real queries; select one."
+    when_not: Not for mapping the literature (Literature review) or turning the thesis into a spec (Approach design).
+    body: |-
+      ## Goal
+
+      Take a position in a direction you have now read properly. The output is not a topic; it is a **thesis with the experiment that could kill it**, plus the record of everything else you considered and why it lost. This skill manages process; you manage judgment: what is worth proposing, what a reviewer would say, and which candidate you would actually work on.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | Direction and what "better" means | `brief.md` |
+      | The field | `library/landscape/landscape_report.md` |
+      | Gaps | `library/landscape/gap_summary.md` |
+      | Who does what, on which benchmark | `library/corpus/CORPUS_PAPERS.csv` and the report; `search_papers` for what the corpus does not hold |
+      | Already ruled out | `claims.md` entries with `reconsider-if`: paths already priced. Do not regenerate them unless their condition now holds |
+
+      Blocked when Literature review has not produced the landscape report and gap summary: ideas generated without a map are generic. Run Literature review first.
+
+      ## Discipline
+
+      - **A good idea is one where the answer matters whichever way it goes.** If a negative result would not be worth writing down, the idea is weak however exciting the positive case looks.
+      - **No "apply X to Y"** unless the application reveals something surprising, and you say what the surprise would be.
+      - **Every idea carries what would kill it.** A candidate with no stated way to fail is a wish, not an idea; drop it at screening.
+      - **Scores order; they never decide and never enter the Claims list.** If you rate candidates, the number is a working aid inside `method/candidates.md`. It is not evidence.
+      - **Novelty is a search result, not an opinion.** The verdict comes from queries you actually ran, recorded verbatim (protocol in the reference).
+
+      ## Stages
+
+      Three stages in order: **generate → screen → select**. Generating and judging are kept apart on purpose: judging while generating kills the unusual candidate before it is stated. Confirm each stage's output exists before starting the next.
+
+      ### 1. Generate: 8-12 candidates, no judging
+
+      Read the inputs; the `reconsider-if` entries in `claims.md` are a banlist. Then write 8-12 candidates, each with all six fields, no exceptions:
+
+      1. **Summary**: one sentence.
+      2. **Core hypothesis**: what you expect to find and why, stated so it could turn out false.
+      3. **Minimum viable experiment**: the cheapest thing that would give a signal: which data, which systems compared, which metric, which baseline.
+      4. **Contribution type**: empirical finding, new method, theoretical result, or diagnostic.
+      5. **Risk**: LOW (likely works), MEDIUM (50-50), HIGH (speculative).
+      6. **Effort**: days, weeks, or months.
+
+      Prioritise candidates that are testable at modest cost with what this project can actually reach; likely to give a clear positive **or** negative result (both are results); differentiated from the papers in the corpus; and not "apply X to Y" without a stated surprise. Hold each against "does the answer matter whichever way it goes?" before writing it down.
+
+      Push for mechanism diversity: if three candidates would fail for the same reason, they are one candidate. Cover more than one of the gap kinds the gap summary names.
+
+      Write `method/candidates.md` (template below).
+
+      **Done when** 8-12 entries exist, each with all six fields, and at least three genuinely different mechanisms are represented.
+
+      Showing the user the full list before screening is a user decision point (see Decision rights): it is the last point at which an unusual candidate is still alive.
+
+      ### 2. Screen: down to 4-6
+
+      For every candidate, in this order. A candidate that fails any one check is eliminated: record it with its reason, never drop it silently.
+
+      1. **Feasibility**: can this project actually run the minimum experiment? Data reachable, compute within budget, implementation tractable? Anything needing an unavailable dataset or a scale this project cannot reach is out.
+      2. **Quick novelty probe**: 2-3 targeted `search_papers` queries per candidate, with `purpose='novelty'` and the candidate id as `tag`. It only catches the obviously already-done; the full check on survivors comes in select.
+      3. **So-what**: if the experiment succeeds, does it change how anyone proceeds? If it fails, is the negative result worth writing down? A candidate that is only interesting when it wins fails here.
+
+      **Compare, don't rate in isolation.** Where two candidates are close, ask the question that separates them ("what would make me pick C3 over C5?") rather than giving each an absolute score. The dimensions worth comparing are in the reference. Any numeric ratings stay in `method/candidates.md`.
+
+      Update `method/candidates.md`: mark each survivor and append the Eliminated table. For each eliminated candidate that could become viable under different conditions (data appears, budget grows, a dependency ships), add an entry to the Claims list: `supported` (the elimination is a fact with evidence), the reason, and `reconsider-if`. This keeps the Claims list a map instead of a graveyard.
+
+      **Done when** 4-6 survivors are marked and every eliminated candidate has a recorded reason.
+
+      ### 3. Select: novelty-check, attack, pick one
+
+      1. **Novelty check with real queries.** For each survivor, follow the novelty-check protocol in the reference. The verdict is `new` (name the closest work and the differentiator), `done` (cite it; the candidate is dead, record why) or `adjacent` (state precisely what is left undone), and it carries the queries you ran. A candidate whose novelty rests on searches you did not run is not checked; say so rather than guess.
+      2. **Devil's advocate, one pass, in character.** For the survivors together, answer as a hostile reviewer: the strongest objection to each; the most likely failure mode; how you would rank them for a serious venue; which two or three you would actually work on. Record the objection on each candidate, then **fold it back into the experiment**: if the reviewer says "your signal may just be measuring implementation variety", the minimum experiment gains the ablation that separates the two. An objection that changes nothing was not taken seriously.
+      3. **Pick one**, deciding on these in order:
+         1. A kill criterion exists: what would refute it is stated and reachable.
+         2. The answer matters either way: the negative result is worth writing down.
+         3. The cheapest disconfirming test: how fast you can find out you are wrong.
+         4. Feasibility, as the tie-break, not the lead criterion.
+
+      Write `method/position.md` (template below).
+
+      Picking the thesis is a user decision point (see Decision rights): present your pick with the runners-up and why each lost, and move on only with the user's choice. Everything downstream (the scoped literature review, the dataset, the code, the experiment) is scoped to this thesis; it is the cheapest thing to change now and the most expensive later.
+
+      Then add to the Claims list:
+      - The chosen thesis as an `open` entry, `source: ideate`, with `test:` pointing at its minimum experiment, noting that the pre-registered rule itself is frozen in Approach design (falsify stage).
+      - Each runner-up as a `supported` entry with why it lost and `reconsider-if`.
+
+      **Done when** `method/position.md` exists with a thesis, a named bar and the runners-up; every survivor in `method/candidates.md` carries a novelty verdict with its queries and a reviewer objection folded into its experiment.
+
+      Next: Literature review, scoped to the thesis's neighbourhood.
+
+      ## Outputs
+
+      - `method/candidates.md`: every candidate with its six fields, survivors marked, the Eliminated table with reasons, and each survivor's novelty verdict and objection.
+      - `method/position.md`: the selected thesis and the bar it must clear; read by Approach design.
+      - Claims list entries: the thesis (`open`, with `test`), and the eliminated candidates and runners-up with `reconsider-if`.
+
+      ## Pitfalls
+
+      - Judging while generating: it kills the unusual candidate before it is stated.
+      - A novelty verdict without the queries you ran: unrecorded queries make novelty an assertion, not a finding.
+      - Letting a score decide: a rubric used as a decision always finds a winner; scores order candidates and are not evidence.
+      - Carrying a candidate with no stated way to fail: no result could ever count against it, so it cannot become evidence.
+      - Three candidates that would fail for the same reason: they are one candidate, and the list only looks diverse.
+      - An objection recorded but not folded into the experiment: the reviewer raises it again after the experiment has run.
+
+      ## Templates
+
+      `method/candidates.md`, at generate:
+
+      ```markdown
+      # Candidates — <direction>
+
+      Generated: <N>. Stage: generate (not yet screened).
+      Source map: library/landscape/landscape_report.md · gaps: library/landscape/gap_summary.md
+
+      ## C1 — <title>
+      summary: <one sentence>
+      hypothesis: <what you expect and why — falsifiable>
+      minimum experiment: <data · systems · metric · baseline>
+      contribution: empirical | method | theory | diagnostic
+      risk: LOW | MEDIUM | HIGH
+      effort: days | weeks | months
+      attacks gap: G<k>
+      ```
+
+      Appended at screen:
+
+      ```markdown
+      ## Eliminated
+
+      | Candidate | Reason |
+      |---|---|
+      | C4 | already done — <id>, same mechanism and benchmark |
+      | C7 | needs a scale this project cannot reach (<what>) |
+      | C9 | result would not change anything either way |
+      ```
+
+      Appended to each survivor at select:
+
+      ```markdown
+      novelty: adjacent
+        queries run: "<query 1>" (arxiv, 41 hits) · "<query 2>" (semantic_scholar, 12 hits) · "<query 3>" (corpus, 3 hits)
+        closest: <id> — <what they did> — stopped at <what they did not do>
+        differentiator: <the one sentence that says why this is not that>
+      objection: "<the strongest thing against it, in the reviewer's voice>"
+      experiment strengthened: <the control or ablation added because of it>
+      ```
+
+      `method/position.md`:
+
+      ```markdown
+      # Position
+
+      ## Thesis
+      <one sentence — the claim this project will try to refute>
+
+      ## Gap it attacks
+      G<k> from library/landscape/gap_summary.md — <one line>
+
+      ## The bar
+      beat: <system/baseline, named>
+      on: <data>
+      by: <metric> — <how much counts as beating it>
+
+      ## Why this one
+      <2-3 sentences: kill criterion, why the answer matters either way, cost to find out>
+
+      ## Runners-up
+      C<k> — <why it lost> — reconsider-if <condition>
+      ```
+    reference: |-
+      ## Novelty check protocol
+
+      Novelty is the claim most often asserted and least often checked. This protocol makes it evidence. Search surfaces, in order: the literature review's corpus and landscape report, then the paper databases through `search_papers`.
+
+      ### Per candidate
+
+      1. **Extract the checkable claim.** Not "our approach is novel" but the mechanism sentence, such as "using execution feedback to re-rank tool selection across turns". If you cannot state it in one sentence, it is too vague to check.
+      2. **Run at least three differently phrased searches.** One phrasing finds one vocabulary; a field usually has three. Vary:
+         - the field's own term vs the plain description (search the corpus and the report; `search_papers` against a database);
+         - the mechanism's components separately, then the combination;
+         - the problem itself, then what existing methods for it actually do (the report's approach sections, and the closest paper read directly).
+
+         Write the queries down with their source and hit count. **A novelty claim whose queries are not recorded is an assertion, not a finding.**
+      3. **Give one of three verdicts, all legitimate:**
+
+      | Verdict | Means | Do |
+      |---|---|---|
+      | **new** | Nothing in the corpus does this | Record the queries as the evidence; note the corpus-coverage caveat |
+      | **done** | A paper already does it | Drop the candidate and record the paper. This is a save: weeks not spent |
+      | **adjacent** | Done, but in another setting, domain or scale | The contribution is the transfer. Say so explicitly and narrow the claim to it |
+
+      ### The corpus is not the world
+
+      A `new` verdict is bounded by what the corpus covers. Before believing it:
+      - Check whether the corpus is thin in this candidate's area: the report's coverage statement, and the `limits` of entries in the Claims list.
+      - If thin, run one targeted external search before claiming novelty.
+      - Either way, record the bound: "new within a 34-paper corpus whose coverage of X is weak" is honest; "novel" is not.
+
+      This protocol does not judge whether a candidate is good, only whether it is already taken. Value, feasibility and falsifiability are for the comparison below.
+
+      ## Comparing candidates
+
+      These are dimensions for comparing candidates against each other, not a score that decides. The pick follows the order in the select stage; if you do keep numbers for ordering, they stay in `method/candidates.md` and carry no weight of their own.
+
+      For each dimension you use, give one sentence of justification and one concrete piece of evidence (a paper, a search result, a number from the landscape report or the position). Where you have none, write `[no external evidence]` rather than implying you do: an honest gap beats a confident guess.
+
+      - **Gap fit**: the mechanism attacks the named gap directly, not something adjacent to it, and the mechanism is stated specifically. Weak: it improves something real, but not the gap it names.
+      - **Novelty**: the novelty check found no method doing this. Discount hard for "done in another setting": that is a transfer contribution, real but smaller. Taken from the check's verdict, never from a prior.
+      - **Falsifiability**: a cheap experiment could clearly prove it wrong. Weak: only a full-scale run could tell, or no result would ever be decisive.
+      - **Feasibility**: buildable with the data, compute and time available; its dependencies exist today. Judge the *hardest* component, not the average.
+      - **Failure informativeness**: if it fails, the field learns that an assumption is false. Weak: failure teaches nothing; it just means the trick did not work.
+      - **Cost**: implementation effort and compute. Give it the least weight: cheapness rarely deserves to decide a research direction.
+
+      **Calibration.** Be critical: most honest candidates are mixed. If every candidate looks strong on every dimension, the comparison was done as advocacy; redo it against the evidence.
+
+      **Two things no comparison overrides:**
+      - A `done` novelty verdict drops the candidate, whatever else it has going for it. Record the paper that already did it.
+      - A candidate that no cheap experiment could prove wrong does not proceed: eliminate it with that reason. A method nobody can prove wrong cannot be evidence for anything.
+  - id: approach-design
+    name: Approach design
+    when_use: "After the thesis is chosen and its neighbourhood reviewed: turn it into a method under a complexity budget, freeze a spec someone else can build, and pre-register the rule that decides the claim."
+    when_not: Not for choosing ideas (Ideation), finding data (Dataset), writing code (Implementation) or running the experiment (Evaluation).
+    body: |-
+      ## Goal
+
+      Turn the selected thesis into a buildable, measurable, falsifiable method. The output is not prose about an idea; it is a spec another agent can implement, an experiment that could prove it wrong, and a claim in the Claims list that Evaluation will later settle. This skill manages process and discipline; you manage judgment: what the mechanism should be, how simple it can be, and what would falsify it.
+
+      Core rule: **do not plan a large experiment suite on top of an unstable method.** Stabilise the thesis first, then turn it into experiments.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | The question and what "better" means | `brief.md`: main question, research type, constraints, evaluation axes, exclusions |
+      | The thesis and the bar it must clear | `method/position.md` (from Ideation) |
+      | The gap | `library/landscape/gap_summary.md` |
+      | Baselines and evaluation practice | `library/landscape/landscape_report.md` and `library/corpus/CORPUS_PAPERS.csv`: what exists for this problem, what it is evaluated on, with which metrics; the cited papers for details |
+      | Already ruled out | `claims.md` entries with `reconsider-if`: paths already priced |
+
+      Blocked when there is no `method/position.md` (run Ideation), or when the thesis has never been grounded against the literature (run Literature review scoped to the thesis first).
+
+      ## Three hard rules
+
+      - **Grounded, not invented.** Every claim about what exists ("no one has combined X with Y", "the standard baseline is Z") comes from the landscape report, the corpus, a `search_papers` search you ran, or a cited paper, never from your prior. Ungrounded novelty is the characteristic failure of this step.
+      - **Falsifiable or unfinished.** A spec without a concrete experiment that could prove it wrong is not done. "It would improve results" is not falsifiable; "it beats Z on D by ≥X on metric M, and if it does not, assumption A is wrong" is.
+      - **Buildable with what exists.** The minimal experiment must be runnable with data the Dataset step can produce and the compute the brief's constraints allow. If not, the design is incomplete: fix it. If only relaxing a constraint in the Project brief would fix it, that is a change to the brief, which only the user can make.
+
+      ## Stages
+
+      Three stages in order: **thesis → spec → falsify**. The order is the method: a spec written on a moving thesis gets rewritten, and a decision rule written after results exist is not a pre-registration. Confirm each stage's output exists and passes its gate before starting the next.
+
+      ### 1. Thesis: make it hold still before designing anything
+
+      Prerequisites: `method/position.md` and `brief.md`. Write `method/proposal.md`:
+
+      1. **Copy the problem anchor verbatim.** Copy the brief's main question, evaluation axes and exclusions into the top of `method/proposal.md` word for word. A paraphrase is where drift starts. Every later revision of this file re-copies it. At every step below, hold the design against it: if a change makes you answer a different question, it is drift, not an improvement.
+      2. **Name the technical gap.** One paragraph, from the gap summary and the scoped literature review: what specifically is missing or broken in the current best approach. Not "little work exists on X"; what breaks, and where.
+      3. **State the method thesis and argue it is the smallest.** The mechanism in one or two sentences, and why it is the smallest adequate intervention: what simpler thing you considered and why it does not reach the bottleneck. Prefer the minimal mechanism that directly fixes the bottleneck; a larger system that also works is a worse answer, because it makes attribution impossible and the result unreadable.
+      4. **Pick one dominant contribution**, with at most one supporting contribution. Three contributions are three papers or a mess; choose.
+      5. **Set a complexity budget before designing**, and treat it as binding. Fixed after the fact it is a rationalisation; fixed before, it kills bloat while bloat is still cheap to kill.
+
+         ```markdown
+         ## Complexity budget
+         new components: <= N
+         new dependencies: <name them, or "none">
+         new hyperparameters: <= N
+         added inference cost: <bound>
+         what is explicitly NOT in scope: <list>
+         ```
+      6. **Name the failure modes**: two or three ways the mechanism could fail, each with what you would *observe* when it happens. Without this, the falsify stage cannot tell a broken build from a wrong idea.
+
+      `method/proposal.md` then holds: Problem Anchor (verbatim) · Technical Gap · Method Thesis with the smallest-adequate argument · Contribution Focus · Complexity Budget · Failure Modes.
+
+      **READY gate.** Do not leave this stage until all four hold; otherwise revise here, because an unstable thesis wastes every expensive stage downstream.
+      - No drift: the thesis still answers the anchor's question.
+      - Exactly one dominant contribution.
+      - The design fits its own complexity budget.
+      - Each failure mode has an observable.
+
+      The thesis entry in the Claims list (`source: ideate`) stays `open`; note in it that the decision rule is frozen in the falsify stage.
+
+      ### 2. Spec: freeze what someone else will build
+
+      Prerequisite: `method/proposal.md` past its READY gate.
+
+      1. **Write `method/method_spec.md` to the spec contract** in the reference, so the implementer never has to guess: commitment; components and interfaces with data shapes; the algorithm at a level someone else could re-derive step by step, not intent-level; every hyperparameter with a default and why; the metric contract; baselines and comparison protocol; failure modes with the signal you would actually look at; unknowns, listed plainly, never a guess dressed as a decision.
+
+         The **metric contract** gives each metric its canonical key, its direction (is higher better?), how it is computed, and what must be logged. `code/README.md` and `experiments/plan.md` copy these four verbatim later; restating them is how they drift apart (one quantity, one name: see Experiment integrity).
+      2. **Stay inside the complexity budget.** Over budget means one of two things, and you must say which: the budget was wrong (revise it deliberately, in writing, in `method/proposal.md`) or the design bloated (cut it). Silently exceeding it defeats the point of having set it.
+      3. **Feasibility gate: check, do not assume.**
+         - Data: can the Dataset step actually produce what this needs? Check `dataset/` if it exists; otherwise state exactly what must be built.
+         - Compute and time: inside the brief's constraints?
+         - Measurement: is every metric in the contract computable from what the spec says to log?
+
+         Any failing check means the design is not finished: fix the spec, or, if only the brief's constraints stand in the way, raise it with the user (see the hard rules). Never pass on a spec that cannot be run.
+
+      ### 3. Falsify: the cheapest experiment that could kill it, with its rule frozen
+
+      Prerequisite: `method/method_spec.md`. Write `method/falsification.md`:
+
+      1. **The minimal experiment.** Not the full evaluation; the cheapest thing that could prove the approach wrong:
+         - comparison: this approach vs which baseline, named;
+         - data: which dataset, what size;
+         - metric: from the spec's metric contract, copied verbatim;
+         - scale: a fraction of the full evaluation.
+      2. **The pre-registered decision rule**, written as a sentence a machine could execute, with the numbers in it:
+
+         ```
+         Δrecall@10 >= +0.03  → supported
+         Δrecall@10 <= -0.03  → refuted
+         otherwise            → tie-break on nDCG@10 (±0.02), then runtime
+         ```
+
+         This is the hinge of the project. Evaluation reads it literally and may not renegotiate it, and neither may you once it is written (pre-registration: see Experiment integrity). If Ideation left an *expected* outcome ("+8-12 points"), that is a prediction, not a rule: pick the number below which you would genuinely abandon the thesis, and write that.
+      3. **Broken-implementation vs wrong-idea gate.** State what you would see if the *implementation* is broken rather than the *idea* wrong, using the failure-mode observables from the spec: for example, the baseline itself fails a sanity check, the metric disagrees with a hand-computed example, or the configuration provably does not change behaviour. The two need opposite responses, and telling them apart after the fact is nearly impossible. Evaluation runs this gate first; a number that fails it is not a result.
+      4. **Budget, risks, retreat.** What running this costs; the top 2-3 risks, each with an early signal ("if the pilot shows …, this is failing"); and the retreat, what you fall back to. A design with no retreat becomes sunk cost.
+
+      Then update the thesis entry in the Claims list:
+
+      ```
+      test: method/falsification.md#rule · rule: <the rule, verbatim>
+      ```
+
+      It stays `open` until Evaluation produces evidence. That transition, open to supported or refuted by this rule, is what "the research concluded something" means.
+
+      Downstream: Dataset reads what data the experiment needs, Implementation builds from `method/method_spec.md`, and Evaluation judges against this rule.
+
+      ## Outputs
+
+      - `method/proposal.md`: the stabilised thesis: anchor verbatim, technical gap, thesis with the smallest-adequate argument, contribution focus, complexity budget, failure modes.
+      - `method/method_spec.md`: what to build and what to measure; read by Implementation and Evaluation.
+      - `method/falsification.md`: minimal experiment, pre-registered rule, broken-vs-wrong gate, budget, risks with early signals and the retreat; read by Dataset and Evaluation.
+      - The thesis entry in the Claims list, updated with its `test` and rule.
+
+      ## Pitfalls
+
+      - Specifying a thesis that is still moving: the spec gets rewritten and every experiment planned on it is wasted.
+      - A decision rule without numbers in it: it cannot be applied literally, so it ends up decided after the results, which is not evidence.
+      - Exceeding the complexity budget silently instead of revising it in writing: the budget only kills bloat if crossing it is a visible decision.
+      - Unknowns dressed as decisions: the implementer builds on a guess nobody knows was a guess.
+      - Designing before the gap is grounded: you get a plausible approach to a problem the field already solved.
+      - A spec only its author could implement (missing interfaces, data shapes, or "how do I know it worked"): the implementer guesses, and the result measures the guess.
+      - Designing the paper's story instead of the approach: the story is written from the results in Paper writing; shaping the method around a narrative now bends the design.
+    reference: |-
+      ## What a method spec must contain
+
+      The test of `method/method_spec.md`: **another agent implements from it without asking you questions, and Evaluation scores the result without asking either.** Every section below is required; write "N/A — <reason>" rather than dropping one silently.
+
+      ### 1. Commitment
+      Two sentences: what the method does and what it claims to achieve, in the position's terms. If it cannot be said in two sentences, the design is still muddy.
+
+      ### 2. Components and interfaces
+      Per component: its job, its inputs and outputs **with data shapes** (what one item looks like going in and coming out), and the dependency it introduces. Draw the flow; a list of "A → B" lines is fine. The implementer builds exactly this list.
+
+      ### 3. Algorithm
+      The procedure at a level a competent stranger could re-derive: order of operations, the decision points, what happens on each branch. Pseudocode where prose gets ambiguous. Name the parts that are standard, and cite where they come from, so the implementer does not reinvent them.
+
+      ### 4. Hyperparameters and defaults
+      Every knob: default value, plausible range, and what it trades off. A knob with no default is an unfinished decision handed to the implementer.
+
+      ### 5. Metrics and logging contract
+      - Each metric with its **canonical key** (one name per quantity, used identically in the spec, the code's logs and Evaluation), its direction (higher or lower is better), and how it is computed.
+      - What the method must log per run for those metrics to be computable. This is the interface to Evaluation, and it is the most commonly forgotten section.
+
+      ### 6. Baselines and comparison protocol
+      Which baselines, in which configuration, on which data, with what held constant. State what would make a comparison unfair and how you avoid it (what a real control shares with the method: see Experiment integrity).
+
+      ### 7. Failure modes and diagnostics
+      Carried over from `method/proposal.md`, each now with the signal you would actually look at.
+
+      ### 8. Unknowns
+      Everything you could not determine, listed explicitly. Unknowns belong here, never dressed up as decisions elsewhere in the document. Each unknown gets what it blocks and how it would be resolved.
+
+      ## Rules
+
+      - **No ellipses, no "etc."**: an implementer cannot build "etc.".
+      - **One quantity, one name**: renaming a metric between spec, code and evaluation is the classic way to lose a result.
+      - **Standard parts get citations; novel parts get a full description**, clearly separated: the reader must know which is which.
+  - id: dataset
+    name: Dataset
+    when_use: "After Approach design: work out what the data must make observable, search public datasets, judge each for its intended use, and pick one or, with the user's agreement, build a synthetic set."
+    when_not: "Not before `method/falsification.md` exists, and never for producing results or model outputs: this step produces stimuli only."
+    body: |-
+      ## Goal
+
+      Get the data the experiment needs. Work out what the claim requires the data to demonstrate, search public datasets, judge each candidate as dataset + intended use, and either pick one or abstain and, with the user's agreement, build a synthetic stimulus set to a designed strategy. This skill manages process and discipline; you manage judgment: what the claim actually requires of data, whether a candidate can carry it, and whether to abstain.
+
+      ## The rule that shapes everything
+
+      > **The dataset is a stimulus artifact for a later experiment. It never contains model responses, scores, verdicts or outcomes; those are the experiment's outputs.**
+
+      A dataset that carries results is contaminated for every future evaluator. The rule is enforced in the strategy's construction variables, in the `datapoint-generator` brief, and in your review of what comes back.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | The claim and what would falsify it | `method/method_spec.md` and `method/falsification.md` (the comparison, metric and decision rule) |
+      | What "better" means | `brief.md` evaluation axes |
+      | What the field evaluates on | `library/landscape/landscape_report.md`: the recurring datasets and metrics are the default candidates |
+      | Constraints | `brief.md`: compute, time, licence and usage limits |
+
+      Blocked when the experiment is not specified: without knowing what will be measured, "the right data" is undefined. Run Approach design first.
+
+      ## Stages
+
+      **need → search → decide → (synthesize)**, in order, never skipping ahead. Synthesize runs only when decide abstains and the user agrees; that is the design, not a fallback for laziness. After each stage, confirm its outputs exist and are non-empty: a missing file means the stage is not done, whatever you remember doing.
+
+      Research-design documents are Markdown; only the datapoints are JSON. A schema forced onto the requirement or the strategy degrades the reasoning: they are documents you argue with, not records you serialize.
+
+      ### 1. Need: the data requirement, before looking at any dataset
+
+      Look first and you will find something plausible and bend the claim to fit it.
+
+      1. **Read the experiment, not the idea.** From `method/falsification.md` take the literal comparison: which systems, on what data, scored by which metric, with which decision rule. The data must make *that* measurement possible, not the general topic.
+      2. **Write the requirement**, four concrete fields:
+         - **Phenomenon**: what must be observable for the claim to be testable at all (e.g. "instances where a first-turn tool choice is wrong and the failure is observable before the final answer").
+         - **Form**: the unit and its shape: what one item contains, what the system under test receives, and what is held back.
+         - **Labels / ground truth**: what must be known per item for the metric to be computable; if nothing is labelled, how the metric gets its truth.
+         - **Constraints**: the size floor the decision rule needs to be readable, licence and usage limits, and anything the brief's constraints impose.
+
+         **Do not name candidate datasets here**: naming one turns the rest of the step into an argument for it.
+      3. **Ask the review what the field uses.** From the evaluation-practice part of the landscape report and the corpus, list the datasets and metrics that recur for this problem, plus any dataset the user named in `brief.md` or `materials/`. They are the first candidates, and using what the field uses is itself an argument: a result on a standard benchmark travels further than one on a private set. Note where the standard sets do *not* contain your phenomenon; that gap is the reason you may end up abstaining.
+      4. **Draft 4-8 search phrasings** of three kinds: the phenomenon in the field's vocabulary; the task or format ("multi-turn tool call traces with failure labels"); and **mismatch probes** aimed at what would disqualify a candidate ("single-turn only", "synthetic-only"), so decide sees the risks and not just the hits.
+
+      Write `dataset/requirement.md`: phenomenon · form · labels/ground truth · constraints · what the field standardly uses · the search phrasings. Add the data requirement to the Claims list as `supported`, with evidence pointing at the report's evaluation practice and at `method/falsification.md`: it is a fact about the field, and later steps re-read it instead of re-deriving it.
+
+      ### 2. Search: a pool wide enough that abstaining means "nothing exists"
+
+      1. **Run every phrasing** with `search_datasets` into `dataset/candidates.csv` (it appends). Cover HuggingFace (`source: hf`), where public data usually lives; OpenAlex (`source: openalex`), because many benchmarks exist only as a paper with the artifact behind it, and that is still a candidate; and the field's standard datasets by name: if one does not show up in a generic search, search it directly rather than concluding it is absent.
+         - **Phrase per source.** HuggingFace matches names and tags near-literally: short, name-like queries ("tool use", "multi-hop QA") find things; a four-word natural phrase finds nothing. OpenAlex handles the longer descriptive phrase. Running the same long phrase on both and concluding "no data exists" is a search failure, not a finding.
+         - **Use the community's words.** Three phrasings that all use your own words are one phrasing.
+      2. **Run the mismatch probes too.** A candidate that looks perfect until you learn it is single-turn only should reach decide with that evidence attached.
+      3. **Prune the plainly irrelevant; keep the near-misses.** Decide's job is to say precisely why a near-miss fails, and that sentence is what makes an abstention credible.
+
+      Record the phrasings you ran in the search archive in `records/`, so a later reader knows the search's shape. Record what you could not search (sources that need a key, gated datasets, anything behind a login) in the `limits` of the data-requirement entry: it is a coverage limit. An empty pool after an honest search is itself the finding that leads to abstaining.
+
+      ### 3. Decide: pick one, or abstain
+
+      The abstention is the highest-value act in this step: every weak shortlist silently redefines the research question.
+
+      1. **Review each serious candidate** with the candidate review in the reference, judging `dataset + intended use`, not the dataset's name: "is X good?" has no answer; "can X carry THIS claim under THIS metric?" does. Read the actual dataset card or paper; description snippets are not evidence. Cap deep reviews at about five; if more look serious, the requirement is too loose: go back and tighten it.
+      2. **Pick or abstain.** Pick when a candidate genuinely operationalizes the phenomenon, the metric is computable from what it contains, and the mismatches are ones you can name and live with. Otherwise abstain: write `abstain: true` and do **not** output a weak shortlist. **Never compute the decision from a score**: no threshold, no weighted average of confidences. "Does this data make the claim testable?" is a judgment; a rubric that automates it always finds something close enough.
+      3. **Write the card and the report.** `dataset/dataset_card.md` is the entry point every later step reads: what the data is, unit and shape, size, provenance, licence, known biases, public or synthetic, and, if picked, exactly which parts of the requirement it satisfies and which it does not. If you abstained, the card says so and points at what synthesis would build. `dataset/selection_report.md` records every candidate, kept or rejected, with the reason and the evidence it rests on, and `abstain: true/false` with the argument.
+      4. **Record the rejections as knowledge.** Each rejected candidate becomes a Claims list entry: `supported` (the rejection is a fact with evidence), the reason at mechanism level, and `reconsider-if` (e.g. "if the claim narrows to single-turn", "if the authors release the labelled split they promise"). Add the pick or the abstention with its reason. When abstaining, also add the entry that states what the field's public data collectively cannot do; the shared reason across rejections is usually the most valuable entry of all.
+
+      If you picked, the step ends here. If you abstained, switching to synthetic data is a user decision point (see Decision rights): it commits the project to building data. Present the serious candidates one line each with why they fail, the decision, and what synthesis would cost. Build nothing until the user agrees.
+
+      ### 4. Synthesize: only after the user agreed
+
+      Prerequisites: `dataset/selection_report.md` with `abstain: true` and the user's agreement (or the user's explicit instruction to build data anyway), and `dataset/requirement.md`.
+
+      1. **Design the strategy, in Markdown.** Following the synthetic-data strategy in the reference, write `dataset/synthetic/strategy.md`: motivation fit · **strategy type** (exactly one of the seven) · data unit · topology · construction variables · quality rules · contamination controls · conceptual datapoint guidance. No JSON here: a schema at this point replaces reasoning with form-filling. The two usual mistakes: treating seeds as universal (they belong to specific strategies, not to synthetic data as such), and letting anything but construction variables into the data (no evaluator identity, no system config, no downstream metric fields; the set must stay reusable by future evaluators).
+      2. **Prototype yourself, then generate in batches.** Write a small prototype batch (about 10 rows) yourself and read it: does the topology actually hold (pairs really paired, strata really distinct)? Fix the strategy if not; that is cheap at 10 rows and expensive at 200. Then hand the generation to `datapoint-generator` helpers, one per stratum or variant family (directed batches beat one big undirected batch). Brief each with the strategy's path, its stratum or variant family, the number of rows, and its own output file `dataset/synthetic/datapoints.raw.<batch>.jsonl`, so parallel helpers never overwrite each other's rows. Concatenate the batches into `dataset/synthetic/datapoints.raw.jsonl`.
+      3. **Validate, and know what it does not prove.** Run `validate_dataset` from `datapoints.raw.jsonl` to `dataset/synthetic/datapoints.jsonl`, requiring the strategy's fields and grouping by the stratum or variant label. It checks parseability, required fields, duplicates and the distribution, and its report lists its own blind spots: it cannot tell whether the data operationalizes the claim or whether the distribution is right. Read rows yourself for that; a clean report is a floor. Report how many rows validation dropped. Check the contamination controls explicitly: no copied benchmark items, and the generator must not also be the judge in the later experiment; if it would be, say so now, because it changes the experiment design.
+      4. **Card it.** Update `dataset/dataset_card.md`: synthetic, which strategy and why, size, unit and topology, construction variables, known limitations, and the contamination controls applied. This is what Evaluation reads to know what it is measuring on.
+
+      Add to the Claims list what was built and why (with pointers), and an honest limits entry: synthetic data supports a *pilot*, and a result on it is weaker evidence than the same result on standard data. Say so now, not when the result is in.
+
+      Downstream: Implementation builds against `dataset/dataset_card.md`; Evaluation measures on these rows and inherits their limits.
+
+      ## Outputs
+
+      - `dataset/requirement.md`: the data requirement and the search phrasings.
+      - `dataset/candidates.csv`: every candidate the searches returned (candidate_id · source · name · url · description · size hint · popularity · licence · tags).
+      - `dataset/dataset_card.md`: the entry point for every later step.
+      - `dataset/selection_report.md`: every candidate, kept or rejected, with reason and evidence; `abstain: true/false` with the argument.
+      - `dataset/synthetic/`, only after abstaining: `strategy.md`, `datapoints.raw.jsonl` (as generated), `datapoints.jsonl` (validated), and the validation `*.report.json`.
+      - Claims list entries: the requirement, each rejected candidate, the pick or abstention, what the public data lacks, and the synthetic set's limits.
+
+      ## Pitfalls
+
+      - Synthesizing before abstaining: it replaces data that may already exist and commits the project without the user's agreement.
+      - Recommending the closest dataset instead of abstaining: a weak shortlist silently redefines the claim, and every later step builds on data that cannot answer the question.
+      - Judging a dataset by its name or popularity: the same dataset can be right for one use and useless for another.
+      - Rows that carry responses, scores or verdicts: the dataset is contaminated for every evaluator, including yours.
+      - Treating a clean `validate_dataset` report as proof the data is right: it checks syntax and duplicates, nothing about your claim.
+      - Using generated data as evidence that the claim is true: it is stimulus; only the experiment is evidence.
+    reference: |-
+      ## Reviewing a dataset candidate
+
+      **The framing rule**: evaluate `dataset + intended use`, never the dataset alone. "Is SQuAD good?" has no answer. "Can SQuAD carry the claim that X improves multi-hop reasoning, measured by exact match?" does.
+
+      ### Five checks, in this order
+
+      1. **Phenomenon coverage**: does the data actually contain the thing the claim is about? Not the topic; the phenomenon. A tool-use corpus without failures cannot show failure recovery, however on-topic it is.
+      2. **Operationalization**: through its task, labels and metric, is the measurement in `method/falsification.md` computable from what this dataset provides? If the metric needs per-step labels and the data has final answers only, stop here.
+      3. **Evidence**: from the dataset card, the paper, or papers that use it for a similar claim. "The card says it contains X" is evidence; "the name suggests X" is not.
+      4. **Rival explanations**: if the experiment succeeds on this data, what else could explain it? Length artefacts, template leakage, a spurious feature correlated with the label. A dataset that admits many rival explanations weakens any result run on it.
+      5. **Mismatch**: domain, population, annotation protocol, task framing, licence, scale. Name the mismatches you would have to live with.
+
+      ### What to record per candidate (in `dataset/selection_report.md`)
+
+      - `keep` (true/false) and the one-sentence reason
+      - **why it fits the requirement**, in the requirement's own words
+      - **evidence**, with pointers (card URL, paper)
+      - **key mismatch or risk**: the sentence a reviewer would attack
+      - **recommended use**: which part of the experiment it can serve (it may serve one and not another)
+      - **confidence**: high, medium or low, and what would raise it
+
+      ### The decision
+
+      - **Pick** when the phenomenon is present, the metric is computable, and the mismatches are nameable and acceptable.
+      - **Abstain** otherwise. Do not assemble a shortlist of near-misses to look productive: a weak shortlist silently redefines the claim, and the next step builds on data that cannot answer the question.
+      - **Never compute this from scores**: no threshold on confidence, no weighted average. Automating the judgment guarantees it finds something "close enough".
+
+      ## Synthetic data strategy
+
+      Read this before writing `dataset/synthetic/strategy.md`.
+
+      ### The boundary (the sharpest rule)
+
+      > **Synthetic generation creates data/stimuli only. Never include experiment results, evaluator outputs, model responses, scores, metrics, verdicts or downstream outcomes in generated datapoints.**
+
+      Future experiments consume the dataset and write their results elsewhere. A dataset that carries results is contaminated for every later evaluator, and for the one you are building it for.
+
+      Corollary, enforced in the construction variables: **no evaluator identity and no downstream system config** in the data. The set must stay reusable by an evaluator you have not thought of.
+
+      ### Strategy-first principles
+
+      - Start from the motivation and the public-data gap, then choose a strategy.
+      - **Do not assume seeds are universal.** A seed list expanded into rows is one mechanism that belongs to some strategies, not the shape of synthetic data as such.
+      - Choose the data unit from the research need, not from habit.
+      - Strategy, prompts and examples are Markdown; only datapoints are JSON.
+      - Synthetic data is a benchmark stimulus artifact. **It does not prove a claim by itself.**
+
+      ### The seven strategy types: pick exactly one
+
+      | Type | One datapoint is | Use when |
+      |---|---|---|
+      | `independent_rows` | one self-contained case | each case independently tests the claim; no within-item contrast is needed |
+      | `paired_variants` | same-intent variants over controlled construction variables | surface perturbations, transformation families, intensity sweeps, with **intent held fixed** |
+      | `counterfactual_pairs` | a minimal meaning- or label-changing pair | isolating ONE causal edit (the difference from `paired_variants`: there the meaning is preserved, here it changes) |
+      | `stratified_cases` | cases spanning defined strata | coverage across domains, risk levels or capability bands is the point |
+      | `trajectory_dialogue` | a multi-step interaction | the phenomenon only appears over turns or steps |
+      | `ranking_pairs` | a set supporting relative judgment | the measurement is relative, not absolute |
+      | `custom` | — | only when none of the above fits; say why |
+
+      ### Strategy document sections
+
+      - **Motivation fit**: what phenomenon the data must expose, in the requirement's words.
+      - **Strategy type**, and why.
+      - **Data unit**: what one datapoint represents (it may contain several rows or variants when the topology needs it).
+      - **Topology**: how the items inside one datapoint relate.
+      - **Construction variables**: what is varied and stratified (construction only; see the boundary).
+      - **Quality rules.**
+      - **Contamination and safety controls.**
+      - **Datapoint guidance**: a conceptual field list: source/clean content, variants, transformation family, intensity, category, split, provenance. No response, score or verdict fields, ever.
+
+      ### Quality rules
+
+      - Every datapoint maps back to the strategy and the motivation.
+      - The topology must be visible in the datapoint itself.
+      - Paired variants preserve the same underlying intent; counterfactual pairs isolate the intended change.
+      - Vary the substance, not the surface: rows that differ only in wording are one row.
+      - Prototype small, inspect by hand, then scale.
+
+      ### Contamination and safety controls
+
+      - **Do not copy benchmark items** unless the source explicitly allows it: test-set leakage invalidates the comparison.
+      - **Do not use generated examples as evidence that the claim is true.** They are stimulus; the experiment is the evidence.
+      - **Do not use the same model as both data generator and judge.** If the later experiment would do this, say so now: it changes the design.
+      - Keep safety-sensitive content abstract and non-operational unless the user has explicitly authorized otherwise.
+  - id: implementation
+    name: Implementation
+    when_use: "After Approach design (and Dataset): turn `method/method_spec.md` into code that runs end to end and writes every metric under the spec's exact keys."
+    when_not: Not for research decisions the spec left open (send them back to Approach design), or for running the full experiment (Evaluation).
+    body: |-
+      # Implementation
+
+      Turn the method spec into code that runs and writes what Evaluation needs, in three stages, in order: **scaffold → build → verify**. Thin by design: the research judgment already happened in the spec. If you find yourself making a research decision here, the spec was incomplete; go back to Approach design rather than improvise.
+
+      **The one thing that must survive this step is the spec's metrics contract.** Everything else can be rewritten later; a metric written under the wrong key is a result Evaluation cannot read. The general rules for research code (one quantity one name, real controls, seeds, declared stubs, counted drops) are in the knowledge item "Experiment integrity"; this skill adds what is specific to building it.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | What to build | `method/method_spec.md`: components, interfaces, data shapes, algorithm, hyperparameters, metrics contract |
+      | What must be measurable | `method/falsification.md`: the pilot the code must support |
+      | Data | `dataset/dataset_card.md`: shape, paths, splits (when the experiment needs data) |
+      | Limits | `brief.md`: compute and time constraints |
+
+      Blocked when the spec has a gap that is a research decision. Do not fill it here: mark the item blocked in the plan with what is missing, and go back to Approach design.
+
+      ## Stage 1: Scaffold
+
+      Decide the shape of the codebase and write its README **before any code exists**. The README is the contract the components are built against, and the entry point Evaluation reads.
+
+      1. **Read the spec for gaps.** List what it does not say and sort each gap:
+         - *Implementation choice* (a library, a file layout, a loop order): yours. Make it and note it in the README.
+         - *Research decision* (an unnamed baseline, an undefined metric, a missing threshold, an unspecified data split): not yours. Stop and go back to Approach design; filling it here moves the claim without anyone noticing.
+      2. **Lay out the components.** From the spec's component list, decide the module layout and, for each component, its file, its public function or CLI, and its inputs and outputs. Keep it flat: a research codebase with three levels of abstraction is one nobody can check. Fix the config surface now: what is a parameter (with the spec's default), what is a CLI argument, what is read from the dataset card. Anything the spec made a parameter must not become a constant.
+      3. **Copy the metrics contract verbatim** from the spec: metric keys, direction, and what each is computed from. Copy it; do not restate it.
+      4. **Write `code/README.md`** (template below), then create the directories and empty module files so the build has somewhere to land.
+
+      Done when: the README has every section of the template, the empty layout matches the component map, and no research gap is open.
+
+      ## Stage 2: Build
+
+      Fill the scaffold one component at a time, running each as it lands.
+
+      1. **Order the components by dependency.** Leaves first (data loading, metric computation), then what composes them, then the entry point. Each component should be runnable, or at least importable and unit-testable, the moment it exists.
+      2. **For each component: write it, then run it.** Write it from the README's interfaces and the spec. Note what you could not implement and what you resolved by choice; both matter, because an unimplemented piece is a hole and a resolved ambiguity may be wrong. Then `run_code` on it: a tiny driver, an import check, or a unit test. If it is broken, fix it now; the next component builds on it.
+      3. **Write the tests you will actually rely on.** Not coverage: the two or three checks that catch the failure that would fool you.
+         - The metric computes the value you expect on a hand-made example.
+         - The pipeline preserves the item ↔ result correspondence: carry the item id through every stage and write it next to its result. An off-by-one in the join is invisible in aggregate numbers and fatal to the conclusion.
+         - The config actually changes behaviour: a parameter that is silently ignored is worse than one that is missing.
+
+         Run them with `run_code` and `pytest: true` over `code/tests/`.
+      4. **Keep the README true.** When a component ends up with a different interface than planned, update the README in the same step; a stale entry point is how Evaluation runs the wrong thing.
+
+      **Delegating a large build.** When the build has many independent components, hand them to `component-writer` helpers, one component per helper. Brief each with the component's name and README interface, the paths of `method/method_spec.md` and `code/README.md`, and the files it may touch. Helpers write; they cannot run anything. When they return, run and fix each component yourself, in dependency order, before building on it.
+
+      Done when: every component in `code/src/` has been executed at least once, the tests in `code/tests/` pass, and the README matches what exists.
+
+      ## Stage 3: Verify
+
+      Answer one question with evidence: **can this codebase produce the numbers the falsification's decision rule needs?** Not "is the code good", but can the experiment be read off it.
+
+      1. **Run the pilot on a toy slice.** Take the smallest slice that exercises the whole path (a handful of items) and `run_code` the entry point the README documents. Check that it runs end to end, writes its outputs where the README says, and produces **every metric key in the contract**. Toy first, always: a full run that dies at 80% teaches you nothing you could not have learned in two minutes on ten items.
+      2. **Check the metrics contract literally.** Open the output file. For each metric: is the key spelled exactly as the spec spells it, is the direction right, is the value in a plausible range, and does a hand-computed value on one item match? This is the check people skip and the one that saves the step: a metric under the wrong key, or one that is silently always 0.0, is otherwise discovered after the full run.
+      3. **Sanity-check the control path.** Run the baseline on the same toy slice: it runs, it produces the same metric keys, and the two runs differ only in the mechanism the spec isolates. If it produces numbers identical to the method's, something is not wired; find it now.
+      4. **Record the honest state.** In the README's Status section: what runs, what is stubbed, what would break at full scale (memory, rate limits, wall time), and what the pilot does not cover. Then add an entry to the Claims list that the pilot runs and produces the contract's metrics (evidence: the pilot output file), and one entry per stub, coverage hole or scale risk, with `limits:` naming what it weakens.
+
+      Done when: the pilot and the baseline path both run on the toy slice and write every contract metric under the spec's exact key, a hand-computed value matches, and every stub and scale risk is declared.
+
+      Evaluation needs two things from this step: the run commands and the metric keys. Lead your step report with them, then the toy values, the baseline check, and what is not ready.
+
+      ## What "it runs" means
+
+      - Executed by `run_code`, not read and believed. A component you have not executed does not work; that is the base rate, not pessimism.
+      - On real inputs of the real shape: a toy slice, but in the actual format.
+      - Producing the actual output files, at the paths the README documents.
+      - Twice, if anything is random: same seed, same result.
+
+      ## `code/README.md` template
+
+      ```
+      # <project> code
+      ## Component map      file · public function or CLI · inputs → outputs
+      ## How to run         pilot command · full-run command · baseline command
+      ## Outputs            what is written, where, in what format
+      ## Metrics contract   copied verbatim from method/method_spec.md: key · direction · computed from
+      ## Config surface     parameter · default · CLI flag or config field
+      ## Choices            implementation choices made where the spec was silent, with the reason
+      ## Status             what runs · what is stubbed · scale risks · what the pilot does not cover
+      ```
+
+      ## Pitfalls
+
+      - Skipping verification because the code "looks right": that is what it always looks like.
+      - Renaming or restating a metric ("acc" for the spec's "exact_match"): Evaluation reads the spec's key and finds nothing.
+      - Silently filling a spec gap that is a research decision: it moves the claim without anyone noticing.
+      - Building everything before running anything: each new component builds on the broken ones.
+      - Hard-coding paths, sizes or seeds the spec made parameters: Evaluation can no longer vary them, and the runs that need to are blocked.
+      - Chasing coverage instead of the two or three checks that matter: coverage does not catch the broken join that fools you.
+      - Polishing, abstractions for reuse that does not exist yet, configuration systems, logging frameworks: the reader of this code is someone verifying a claim under time pressure, so keep it flat, explicit and checkable.
+  - id: evaluation
+    name: Evaluation
+    when_use: "After Implementation: run the pre-registered experiment, record every number against its claim and run, apply the decision rule literally, and update each claim's status."
+    when_not: Not for designing the experiment or setting thresholds (Approach design), substantial code changes (Implementation), or writing up (Paper writing).
+    body: |-
+      # Evaluation
+
+      This is the step where the research concludes something: an `open` claim in the Claims list becomes `supported`, `refuted` or `contested`. Four stages, in order: **plan → map → run → read**. The rules every number must meet (traceability, real controls, counted drops, gates before the comparison, what a result does not license) are in the knowledge item "Experiment integrity"; this skill is the procedure. The judgment is yours: how to realize the experiment, what a failure means, and whether a number is trustworthy enough to conclude on.
+
+      **The rule that governs this step: the decision rule was pre-registered in `method/falsification.md`. You execute it; you do not renegotiate it.** Reading results and then adjusting the threshold is the failure this whole chain exists to prevent. If the rule turns out to be unmeasurable, or does not decide the case in front of you, say so explicitly and stop the readout; that is a legitimate outcome. Quietly moving the line is not.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | What to test, and the rule | `method/falsification.md`: comparison, metric, decision rule, and the gating checks that separate a broken implementation from a wrong idea |
+      | Metrics contract | `method/method_spec.md`: metric keys, direction, how each is computed |
+      | Code | `code/README.md`: entry point, config surface, outputs |
+      | Data | `dataset/dataset_card.md`: splits, shape, known limits |
+      | The claim | the `open` Claims list entry whose `test:` points at the falsification |
+
+      Blocked when there is no pre-registered rule, or the code cannot produce the contract's metrics. Say which, and go back to Approach design or Implementation; do not write a criterion here. A criterion chosen after the code exists is not pre-registered, whatever the file says.
+
+      ## Stage 1: Plan
+
+      Turn the rule into a run list. This is not designing an evaluation (that already happened); it makes the design executable.
+
+      1. **Copy the rule verbatim** to the top of `experiments/plan.md`, with the id of the claim it decides. Everything below serves this sentence; having it at the top stops the plan drifting into "interesting experiments".
+      2. **Derive the run list** the rule requires: usually the method and its control, sometimes across configs or data slices. Per run:
+         - **system** (method, baseline, or a named variant) and **config**
+         - **data**: which split, how many items
+         - **required metric keys**: every key the rule mentions, spelled as the spec spells it
+         - **held constant**: what must be identical to its comparison run (data order, seed, prompts, scoring code); this list is what makes it a control
+
+         Add nothing the rule does not need: extra runs are not free, and they invite reading whichever one came out best.
+      3. **Name the gating checks** from the falsification's implementation-vs-idea section, and make them explicit run outputs where possible ("verifier agreement ≥ 0.6", "the control's own score is not degenerate", "revision count > 0").
+      4. **Cost it and define the pilot.** Estimate wall time and money for the full list and write it in the plan. The pilot is the smallest slice that produces every metric key, for checking the plumbing before spending the rest.
+
+      Done when: `experiments/plan.md` holds the rule verbatim with its claim id, the run list with all four fields per run, the gating checks, the cost estimate and the pilot definition.
+
+      ## Stage 2: Map
+
+      Find out what the code can actually do before writing runners against assumptions about it.
+
+      1. **Map it statically.** `map_codebase` over `code/`, writing `experiments/code_map.json`: entry points, per-file CLI options, files that write structured results, the module and function inventory. Read the map, not the source.
+      2. **Check each planned run against the map:** which entry point runs it; which options set what the run varies (system, config, data path, seed, output path); where its results land, and in what format. Anything the plan varies that is not a CLI option or config field is hard-coded, and that blocks the run until fixed.
+      3. **Confirm the metric keys exist.** Check the README's metrics contract; if it is not conclusive, run the pilot entry point on a couple of items and look at the output file. A missing metric key is the most expensive thing to discover late: it invalidates every run made before someone noticed.
+      4. **Fix or send back what is missing** (an option, a metric, a baseline path). Make a small fix here and confirm it with `run_code`. A substantial one goes back to Implementation; note the reason in the plan.
+
+      Done when: every planned run has an entry point, options for everything it varies and a known output location, and every required metric key is confirmed in the output.
+
+      ## Stage 3: Run
+
+      Execute the run list and get every number into `experiments/metrics.csv`, traceable to its claim and its run.
+
+      1. **Pilot first, always.** Run the pilot and check its output by hand: every key present, spelled right, values in a plausible range. Only then spend the rest of the budget.
+      2. **For each run, in this order:**
+         1. Write the runner `experiments/runs/<id>/run.py`: thin; it reads the config, calls the code's entry point, and writes a results JSON. It must meet the runner contract below.
+         2. `check_script` on it. A FAIL is not a style note: fix it and re-check before running.
+         3. `run_code` it. On a non-zero exit, read the traceback, fix, re-run. Record a run that could not complete as `status: failed`; it is information about the method, not an absence of information.
+         4. `record_result` with `claim_id`, `run_id`, `system`, `config`, `n`, `source`, and either `metric`/`value` or `from_json` over the results file. It refuses a row without a claim and a run, and an `ok` row with no value; that refusal is the point.
+      3. **Read the gating checks first.** A failed gate stops the readout: fix, re-run, then proceed. If the gates cannot be passed at all, stop: that is a finding about the implementation, not a result.
+      4. **Log the drops and degradations.** Count the items that errored, timed out or were skipped, and why, in the run's log and in the rows' `n` and `note`. Add degradations (drops, timeouts, a gate that needed several attempts) to the Claims list now, each with `limits:`, so the conclusion inherits them.
+
+      Each run directory holds `run.py`, `results.json` and the stdout log.
+
+      Done when: every planned run is recorded in `metrics.csv` (failed ones as failed), the gates have passed, and the drops are counted.
+
+      ### Runner contract (what `check_script` enforces)
+
+      FAIL, do not run as is:
+      - no `main()`, or `main()` never called under a `__main__` guard: one entry, one path
+      - no structured output (JSON or CSV): a number printed in prose is a number nobody can re-read
+      - a silent `except: pass`: a failed run would look like a successful one
+      - a metrics dict built only from literal constants: a hard-coded result is a fabricated result, however well-intentioned the placeholder
+
+      WARN, run but know it:
+      - randomness imported but nothing seeded: the runs will not be reproducible
+      - a subprocess that discards stderr: a child that dies quietly takes the explanation with it
+      - no CLI surface: fine for a fixed pilot, a smell for a comparison that must vary exactly one thing
+
+      ## Stage 4: Read
+
+      Apply the pre-registered rule literally and mark the claim.
+
+      1. **Confirm the gates passed.** If any failed, stop: the readout is invalid, the finding is about the implementation, and the claim is not marked.
+      2. **Compute the rule's quantities, then apply the rule.** Read the rows from `metrics.csv`, not your memory of the run; compute exactly the deltas the rule names and write them next to their thresholds. Then:
+         - **supported**: the rule's success condition is met.
+         - **refuted**: the failure condition is met. This is a real result: the assumption the falsification named is what is false.
+         - **contested**: the rule's inconclusive band, or the runs disagree.
+
+         If the rule does not decide this case (a situation it did not anticipate), say so explicitly and leave the claim `open` with the reason. A rule that failed to anticipate is a fact about your design; recording it honestly is worth more than a conclusion fitted afterwards, and a rule written now is not pre-registered for these numbers.
+      3. **Mark the claim.** Update its Claims list entry: `status:` from `open` to the verdict, `evidence:` pointing at `experiments/metrics.csv` and the run directory, and the numbers in one line. Keep the `test:` line; it is the record of what was pre-registered. Then check the neighbours: an entry this result contradicts becomes `contested`, with a pointer to it.
+      4. **Write `experiments/summary.md`** (template below). Above all, state what this result does **not** license.
+      5. **Decide what comes next** and say why in the summary: proceed to Paper writing, scale up, fix and re-run, revise the approach (back to Approach design, where the rejected candidates and their `reconsider-if` conditions are waiting), or stop. A `refuted` verdict goes to Paper writing like any other; when you report it, say plainly that it is a result, not a failure.
+
+      Done when: the claim's status is the rule applied to the recorded rows (or stays `open` with the reason), its evidence points at those rows, and the summary is written.
+
+      ### `experiments/summary.md` template
+
+      ```
+      # Evaluation summary — <claim id>
+      Rule (verbatim):
+      Runs:          id · system · config · data · n · status
+      Gates:         check · value · pass/fail
+      Numbers:       quantity · value · threshold
+      Verdict:       supported | refuted | contested | not decided by the rule — one sentence
+      Drops and degradations:
+      What this does not license:
+      Next step:     one, and why
+      ```
+
+      ### `experiments/metrics.csv`
+
+      One row per claim, run, system, config and metric, with the columns `recorded_at, claim_id, run_id, system, config, metric, value, n, status (ok | partial | failed), source, note`. It is written only through `record_result`, and only appended: five runs are five comparable data points. Everything later reads this file; a number outside it cannot support a Claims list entry.
+
+      ## Pitfalls
+
+      - Running before mapping the code: you end up guessing commands and config, and a run against a guessed option silently measures the default.
+      - Reporting a null without the power to detect the effect: too few items cannot tell "no effect" from "not enough data", so say what effect size the runs could have detected.
+  - id: writing
+    name: Paper writing
+    when_use: "After Evaluation: write the claims, the evaluation summary and the method files up into a first paper draft under `paper/`, with every number taken from result files and every citation verified."
+    when_not: Not for deciding whether a claim holds (Evaluation) or assembling the handoff package (Deliver).
+    body: |-
+      # Paper writing
+
+      Turn the claims and evidence into a first draft that reviewers can follow and cannot find serious flaws in. This step comes after Evaluation, so every result the paper reports has already been decided by its pre-registered rule; a refuted thesis is written up as honestly as a supported one.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | What the paper may state, and how strongly | `claims.md`: each entry's status, evidence and limits |
+      | The verdicts | `experiments/summary.md`: numbers against thresholds, drops, what the result does not license |
+      | Every number | `experiments/metrics.csv` and the run directories under `experiments/runs/` |
+      | The thesis and the method | `method/proposal.md`, `method/method_spec.md`, `method/falsification.md` |
+      | Related work and citable papers | `library/landscape/landscape_report.md`, `library/corpus/CORPUS_PAPERS.csv` |
+      | Target venue | `brief.md` |
+
+      ## Steps
+
+      1. **Outline from the Claims list.** Each section covers one or more claims. The claims Evaluation decided are the results; `open` and `contested` entries, and every `limits:` entry, feed the Limitations section.
+      2. **Build the bibliography from verified citations only.** Run `export_citations` over the corpus with the documents the paper draws on (`claims.md`, the landscape report, `method/proposal.md`) as `used`, writing `paper/refs.bib`, and cite with the keys it generates. An entry marked `% UNVERIFIED` lacks a DOI and an arXiv id: verify it by search before citing it, or leave it out. A paper that is not in the corpus is not citable until a search has found it.
+      3. **Do the figures and tables first**, and write the text around them. Take every number from `metrics.csv`.
+      4. **Write the text at the strength of the evidence.** State no claim more strongly than its Claims list entry supports; state a pilot result as a pilot result; carry the summary's "what this does not license" into Limitations.
+      5. **Check the draft** against the done-when criteria below, item by item, and fix anything that fails.
+
+      ## Output
+
+      The draft under `paper/`, written in LaTeX in the language and template the target venue requires, with `paper/refs.bib`. Use vector formats for figures, with a consistent color scheme throughout the paper. The draft goes into the handoff package at Deliver.
+
+      ## Done when
+
+      - Every number in the paper can be found in `experiments/metrics.csv` or a run directory.
+      - Every citation key is in `paper/refs.bib` as generated by `export_citations`, and no cited entry is marked UNVERIFIED.
+      - Every claim has a corresponding figure or table in the main text.
+      - No claim is stated more strongly than its Claims list entry supports.
+      - The Limitations section honestly states the unsupported claims (refuted, open, contested) and the known issues (drops, degradations, limits).
+    reference: |-
+      ## Scientific writing guides
+
+      - Gopen & Swan, *The Science of Scientific Writing*: what readers expect from each position in a sentence, and how to organize paragraphs accordingly.
+      - The target venue's author guidelines and review form.
+  - id: deliver
+    name: Deliver
+    when_use: "After Paper writing: package what the project established (claims with their evidence, the paper draft, the artifacts worth keeping, verified citations, open questions) into `deliverables/` for the user to approve."
+    when_not: Not for writing the paper or settling open claims, and not a dump of everything the project produced.
+    body: |-
+      # Deliver
+
+      Package what the project actually established into a handoff someone else can use, in two stages: **assemble → package**. Everything here already exists in the workspace; the work is selecting what is provable, verifying it still resolves, and stating the boundary of what was shown. The package includes the paper draft from Paper writing.
+
+      **The honesty rule: a handoff that overstates is worse than no handoff.** Whoever picks this up will build claims on top of it, and they cannot see the runs. Every claim in the package carries its evidence, and everything open is listed as open.
+
+      ## Inputs
+
+      | Input | Where |
+      |---|---|
+      | What was established | `claims.md`: the Claims list is the source; `supported` entries are the candidates |
+      | The question | `brief.md` |
+      | The paper | `paper/`: the draft and `refs.bib` from Paper writing |
+      | The artifacts | `library/`, `method/`, `dataset/`, `code/`, `experiments/` |
+      | Citations | `library/corpus/CORPUS_PAPERS.csv` |
+
+      If nothing in the Claims list is `supported` or `refuted`, the project has no established result: say so plainly in the handoff rather than packaging material as evidence. Saying so is the correct output.
+
+      ## Stage 1: Assemble
+
+      Work out what the project can actually claim, by walking the Claims list and checking that every claim's evidence still resolves. These are working notes, not a file.
+
+      1. **Sort every entry into four piles:**
+         - **established** (`supported`): candidates for the handoff
+         - **refuted**: results, and they go in the package too
+         - **open**: what was not settled, including anything the project set out to do and did not
+         - **contested**: evidence both ways; the most interesting and the easiest to drop by accident
+      2. **Verify the evidence; do not trust the list.** For each established claim, open its evidence pointer and check that the thing it points at still says what the entry says. Pointers rot: files get rewritten, a metric gets renamed, a run gets superseded. An entry whose evidence no longer supports it is not established: demote it to `open` and say why. For claims resting on `experiments/metrics.csv`, read the actual rows: the numbers, the sample size, and whether the run's status was `ok`. If a demotion touches a sentence in the paper draft, fix the draft (Paper writing) before packaging it.
+      3. **Collect the boundary conditions:** every `limits:` entry and every degradation the project carried (corpus coverage, pilot scale, synthetic data, skipped sources, gates that needed retries). They are not footnotes: they define what the established claims mean, and the next reader has no other way to learn them.
+      4. **Pick the artifacts worth taking.** For each established claim, the artifact that would let someone check it: the landscape report, the method spec, the metrics CSV, the dataset card, the run directory. Prefer entry-point files over whole directories: a handoff nobody can navigate does not get used. Always take the paper draft and `claims.md`.
+
+      If verification demoted so much that little is left, say so plainly and treat the demotions as the finding.
+
+      ## Stage 2: Package
+
+      Write the handoff and freeze what goes with it, so the package stands on its own outside this project.
+
+      1. **Write `deliverables/handoff.md`**: the six sections of the template below, in order.
+      2. **Export the citations.** `export_citations` with the handoff, `claims.md`, `library/landscape/landscape_report.md` and `paper/refs.bib` as `used`, writing `deliverables/references.bib`. Entries marked `% UNVERIFIED` lack an identifier: list them in the handoff so the reader knows to verify them, and never invent an id to make the file look clean.
+      3. **Freeze the artifacts.** Copy each artifact from stage 1's list into `deliverables/`, including the paper draft and `claims.md`. Add one line per item to `deliverables/manifest.md`: the source path, the claim id it supports, a one-line note. The manifest is what makes the copy checkable rather than just a copy. An artifact whose claim is still `open` may go in as material, labelled so, never as evidence.
+      4. **Read the package as an outsider.** Open only what is in `deliverables/` and ask: could someone who has never seen this project understand what was claimed, on what evidence, and what is missing? Fix what fails; usually an unexplained pointer, or a claim whose number lives only outside the package.
+      5. **Get the package approved.** This is a user decision point (see Decision rights): present what holds, what does not, what is open, the unverified citations, and the paper draft. Nothing leaves the project before the user approves. Then mark Deliver done in the plan with what the package covers, so a later session knows what has gone out.
+
+      Done when: the handoff has all six sections, every established claim in it carries a pointer and its number that resolve inside the package, every frozen copy has a manifest line, unverified citations are listed, and the user has approved the package.
+
+      ## `deliverables/handoff.md` template
+
+      ```
+      # Handoff — <project>
+
+      ## 1. Question
+      The main question from the Project brief, verbatim, and one paragraph on why it mattered.
+
+      ## 2. What was done
+      The steps actually run, a few lines each, with the numbers that characterize them
+      (corpus size, runs, sample sizes). Points to the paper draft.
+
+      ## 3. What holds
+      Per established claim: the statement · the evidence (pointer + the number) · the
+      conditions under which it was shown. This is the section a reader builds on.
+
+      ## 4. What does not hold
+      Refuted claims, and the assumption each one shows to be false. Do not soften this;
+      it is the most useful part for anyone continuing the work.
+
+      ## 5. What is open
+      Unsettled questions, contested entries, the paths rejected along the way with their
+      reconsider-if conditions, the unverified citations, and the recommended next steps.
+      This is the map that stops the next person redoing the dead ends.
+
+      ## 6. Boundaries
+      The collected limits: coverage, scale, synthetic data, anything that bounds section 3.
+      State plainly what these results do not license.
+      ```
+
+      ## Pitfalls
+
+      - Packaging the plan instead of the result: what was intended is not what was shown.
+      - Shipping everything the project produced instead of what the claims need: a package nobody can navigate is not used.
+      - Promoting an artifact whose claim is still `open` to evidence: the reader will build on it as if it were shown.
+      - Dropping refuted results, or burying them in the limitations: a refutation is a result the next reader needs, and silently omitting it is the one thing that makes a handoff untrustworthy.
+      - Leaving unverified citations unmarked: the reader will cite them as checked.
+      - Leaving out the degradations: coverage limits, skipped sources and pilot scale all bound what the claims mean.
   - id: review
-    name: 复盘
-    when_use: 每个阶段结束时、实验失败后、项目结束时。
-    goal: 找出结果和预期差在哪、原因是什么，把值得记下的写成经验提议。
-    practice: |-
-      复盘对照计划和质量标准，回答三个问题：
+    name: Retrospective
+    when_use: At the end of each step, after an experiment fails, and at the end of the project.
+    body: |-
+      # Retrospective
 
-      1. 结果和预期差在哪。
-      2. 是方法错了（做法本身不对），还是执行错了（做法对，但没做到）。
-      3. 下次应该怎么做。
+      Find where the results diverged from expectations and why, and write up anything worth keeping as lesson proposals.
 
-      方法错了的，提出修改做法的建议；执行错了的，记成一条提醒。
+      ## Steps
 
-      复盘时记下自己在哪些事上可靠、在哪些事上常出错，写进经验提议。比如：某类实验的设置经常出错，某个方向的文献容易漏检。
-    output: 经验提议，交用户审。方法错了的，附上修改做法的建议。
+      Check the step (or the failed experiment, or the whole project) against the plan and the done-when criteria of the skill it used, with the Claims list and Attempts & failures as the record of what happened. Answer three questions:
+
+      1. Where did the results diverge from expectations?
+      2. Was the method wrong (the approach itself was flawed), or the execution wrong (the approach was right but was not carried out properly)?
+      3. What should be done next time?
+
+      For a method error, propose a change to the practice; for an execution error, record it as a reminder.
+
+      Also note what you are reliable at and what you often get wrong, and include it in the lesson proposals: for example, the setup for a certain kind of experiment often goes wrong, or literature in a certain area is easy to miss.
+
+      ## Output
+
+      Lesson proposals, for the user to review. For a method error, include the suggested change to the practice: which skill and step, and the proposed wording.

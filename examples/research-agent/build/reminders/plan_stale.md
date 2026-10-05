@@ -1,3 +1,3 @@
-<系统提醒>
-规划和待办很久没有更新了。先回头看一眼规划，确认手上的事还在为研究问题服务；如果卡住了，把这一项标成受阻，向用户汇报或调整计划。
-</系统提醒>
+<system_reminder>
+The plan and to-dos haven't been updated in a while. First look back at the plan and confirm that what you're working on still serves the research question. If you're stuck, mark the item as blocked, then report to the user or adjust the plan.
+</system_reminder>

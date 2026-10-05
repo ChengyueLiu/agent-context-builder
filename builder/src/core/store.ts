@@ -2,11 +2,13 @@
 //
 //   agent.yaml            名称（新建时填写）
 //   system-prompt.yaml    系统提示词里人写的格子，按节分组
+//   workflows.yaml        流程清单
 //   skills.yaml           Skill
 //   knowledge.yaml        知识
 //   tools.yaml            工具
 //   helpers.yaml          帮手
 //   memory.yaml           记忆管理
+//   outputs.yaml          产出物管理
 //   reminders.yaml        自动提醒
 //   guarantees.yaml       系统保证
 //   provided.yaml         运行信息
@@ -19,29 +21,77 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { MANIFEST_FILE } from './compile';
-import { fieldPage, listDef, navPages, selectValue, text } from './outline';
+import { AppError, CONTENT, LANGS, type Lang } from './phrases';
+import { contentLang, fieldPage, listDef, navPages, selectValue, text } from './outline';
+export { contentLang };
 import type { AgentDef, BuildResult, DefPatch, FieldDef, Item, ListDef, ListKind, Template } from './types';
 import { AUTO_IDS, LIST_KINDS } from './types';
 
-// 大纲在仓库根目录，builder 和以后的配置 agent 共用
-const DEFAULT_TEMPLATE = fileURLToPath(new URL('../../../template/default.yaml', import.meta.url));
+// 大纲在仓库根目录，builder 和以后的配置 agent 共用。中英文各一份，结构一样，只有文字不同
+const TEMPLATE_FILES: Record<Lang, string> = {
+  zh: fileURLToPath(new URL('../../../template/default.yaml', import.meta.url)),
+  en: fileURLToPath(new URL('../../../template/default.en.yaml', import.meta.url)),
+};
+const DEFAULT_TEMPLATE = TEMPLATE_FILES.zh;
 
 const CONFIG_FILE = 'agent.yaml';
 const PROMPT_FILE = 'system-prompt.yaml';
 
 /** 每种清单存在哪个文件 */
-const LIST_FILES: Record<ListKind, { file: string; header: string }> = {
-  skills: { file: 'skills.yaml', header: 'Skill：某一类任务怎么做。正文用到时才加载。' },
-  knowledge: { file: 'knowledge.yaml', header: '知识：查阅用的资料，需要时才读。' },
-  tools: { file: 'tools.yaml', header: '工具：它能执行的操作。说明会写进工具定义。' },
-  helpers: { file: 'helpers.yaml', header: '帮手：能把活交出去的对象。' },
-  memory: { file: 'memory.yaml', header: '记忆管理：agent 脑子里记着的关键信息，每样几句话。' },
-  outputs: { file: 'outputs.yaml', header: '产出物管理：agent 产出的文件。' },
-  cases: { file: 'cases.yaml', header: '检验用例：用来检验它做得对不对。不给 agent 看。' },
-  reminders: { file: 'reminders.yaml', header: '自动提醒：系统到点插入的提醒，由 agent 去做。' },
-  guarantees: { file: 'guarantees.yaml', header: '系统保证：必须由系统强制的规矩。不给 agent 看。' },
-  provided: { file: 'provided.yaml', header: '运行信息：系统在运行时提供给 agent 的信息。' },
+const LIST_FILES: Record<ListKind, string> = {
+  workflows: 'workflows.yaml',
+  skills: 'skills.yaml',
+  knowledge: 'knowledge.yaml',
+  tools: 'tools.yaml',
+  helpers: 'helpers.yaml',
+  memory: 'memory.yaml',
+  outputs: 'outputs.yaml',
+  cases: 'cases.yaml',
+  reminders: 'reminders.yaml',
+  guarantees: 'guarantees.yaml',
+  provided: 'provided.yaml',
 };
+
+/** 两种语言的大纲。英文版还没有时，用中文版代替 */
+export async function loadTemplates(): Promise<Record<Lang, Template>> {
+  const zh = await loadTemplate(TEMPLATE_FILES.zh);
+  const en = existsSync(TEMPLATE_FILES.en) ? await loadTemplate(TEMPLATE_FILES.en) : zh;
+  const problems = shapeProblems(zh, en);
+  if (problems.length) throw new Error(`中英文大纲的结构不一样：\n${problems.join('\n')}`);
+  return { zh, en };
+}
+
+/** 大纲去掉文字后的骨架：id、类型、选项值、顺序、去处。两种语言的骨架必须一样 */
+const TEXT_KEYS = new Set(['name', 'title', 'intro', 'label', 'covers', 'hint', 'example', 'preset', 'dest', 'item', 'name_label', 'id_hint', 'from', 'language']);
+/** 预置项里这些格子存的是选项值或标识，两种语言必须一样；其余文字格子随语言不同 */
+const DEFAULT_MACHINE_KEYS = new Set(['id', 'where', 'belongs', 'scope', 'load', 'kind', 'effect', 'source', 'form', 'skill']);
+function shape(v: unknown, inDefaults = false): unknown {
+  if (Array.isArray(v)) return v.map((x) => shape(x, inDefaults));
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v)) {
+      if (inDefaults ? typeof x === 'string' && !DEFAULT_MACHINE_KEYS.has(k) : TEXT_KEYS.has(k)) continue;
+      out[k] = shape(x, inDefaults || k === 'defaults');
+    }
+    return out;
+  }
+  return v;
+}
+export function shapeProblems(a: Template, b: Template): string[] {
+  const problems: string[] = [];
+  const walk = (x: unknown, y: unknown, at: string) => {
+    if (problems.length > 20) return;
+    if (Array.isArray(x) || Array.isArray(y)) {
+      if (!Array.isArray(x) || !Array.isArray(y) || x.length !== y.length) return void problems.push(`${at}：长度不同`);
+      x.forEach((v, i) => walk(v, y[i], `${at}[${i}]`));
+    } else if (x && typeof x === 'object' && y && typeof y === 'object') {
+      const keys = new Set([...Object.keys(x), ...Object.keys(y)]);
+      for (const k of keys) walk((x as Record<string, unknown>)[k], (y as Record<string, unknown>)[k], `${at}.${k}`);
+    } else if (x !== y) problems.push(`${at}：${JSON.stringify(x)} ≠ ${JSON.stringify(y)}`);
+  };
+  walk(shape(a), shape(b), 'template');
+  return problems;
+}
 
 export async function loadTemplate(file = DEFAULT_TEMPLATE): Promise<Template> {
   const template = YAML.parse(await fs.readFile(file, 'utf8')) as Template;
@@ -104,7 +154,7 @@ export function validateTemplate(template: Template): string[] {
 }
 
 export function emptyDef(): AgentDef {
-  return { config: {}, prompt: {}, skills: [], knowledge: [], tools: [], helpers: [], memory: [], outputs: [], reminders: [], guarantees: [], provided: [], cases: [] };
+  return { config: {}, prompt: {}, workflows: [], skills: [], knowledge: [], tools: [], helpers: [], memory: [], outputs: [], reminders: [], guarantees: [], provided: [], cases: [] };
 }
 
 function normalizeValue(field: FieldDef, v: unknown): string | boolean | undefined {
@@ -134,6 +184,9 @@ function normalizeFields(fields: FieldDef[], raw: unknown): Record<string, strin
 export function normalizeDef(template: Template, raw: DefPatch): AgentDef {
   const def = emptyDef();
   def.config = normalizeFields(template.config.fields, raw.config);
+  // 内容语言不在大纲的格子里，单独保留
+  const language = (raw.config ?? {}).language;
+  if (LANGS.includes(language as Lang)) def.config.language = language as string;
   def.prompt = normalizeFields(template.prompt.sections.flatMap((s) => s.fields), raw.prompt);
   for (const kind of LIST_KINDS) {
     const list = listDef(template, kind);
@@ -156,7 +209,7 @@ export async function loadDef(root: string, template: Template): Promise<AgentDe
   raw.prompt = {};
   for (const group of Object.values(bySection)) if (group && typeof group === 'object') Object.assign(raw.prompt, group);
   for (const kind of LIST_KINDS) {
-    const data = await readYaml(path.join(root, LIST_FILES[kind].file));
+    const data = await readYaml(path.join(root, LIST_FILES[kind]));
     raw[kind] = (Array.isArray(data.items) ? data.items : []) as Item[];
   }
   return normalizeDef(template, raw);
@@ -166,19 +219,19 @@ const dump = (header: string, data: unknown) => `# ${header}\n\n${YAML.stringify
 
 export async function saveDef(root: string, template: Template, input: AgentDef): Promise<AgentDef> {
   const def = normalizeDef(template, input);
+  const headers = CONTENT[contentLang(def)].files;
   await fs.mkdir(root, { recursive: true });
-  await fs.writeFile(path.join(root, CONFIG_FILE), dump('名称（新建时填写）', def.config), 'utf8');
+  await fs.writeFile(path.join(root, CONFIG_FILE), dump(headers.config, def.config), 'utf8');
 
   const bySection: Record<string, Record<string, string>> = {};
   for (const section of template.prompt.sections) {
     const fields = normalizeFields(section.fields, def.prompt);
     if (Object.keys(fields).length) bySection[section.id] = fields;
   }
-  await fs.writeFile(path.join(root, PROMPT_FILE), dump('系统提示词里人写的格子，按节分组。自动生成的内容不在这里。', bySection), 'utf8');
+  await fs.writeFile(path.join(root, PROMPT_FILE), dump(headers.prompt, bySection), 'utf8');
 
   for (const kind of LIST_KINDS) {
-    const { file, header } = LIST_FILES[kind];
-    await fs.writeFile(path.join(root, file), dump(header, { items: def[kind] }), 'utf8');
+    await fs.writeFile(path.join(root, LIST_FILES[kind]), dump(headers.lists[kind], { items: def[kind] }), 'utf8');
   }
   return def;
 }
@@ -195,7 +248,7 @@ export async function patchDef(root: string, template: Template, patch: DefPatch
 /** 新建 agent 时的内容：通用做法预填好，通用的记忆项和提醒预置好。 */
 export function presetDef(template: Template, name: string): AgentDef {
   const def = emptyDef();
-  def.config = { name };
+  def.config = { name, language: template.language ?? 'zh' };
   for (const section of template.prompt.sections) {
     for (const f of section.fields) if (f.preset) def.prompt[f.id] = f.preset;
   }
@@ -216,7 +269,7 @@ const AGENT_ID = /^[^./\\][^/\\]*$/;
 
 /** agent 文件夹的绝对路径；名字不合法时报错。 */
 export function agentDir(workspace: string, id: string): string {
-  if (!AGENT_ID.test(id) || id.includes('..')) throw new Error(`不合法的 agent 名：${id}`);
+  if (!AGENT_ID.test(id) || id.includes('..')) throw new AppError('badName', [id]);
   return path.join(workspace, id);
 }
 
@@ -243,7 +296,7 @@ export async function listAgents(workspace: string): Promise<AgentSummary[]> {
 
 export async function createAgent(workspace: string, id: string, name: string, template: Template) {
   const dir = agentDir(workspace, id.trim());
-  if (existsSync(dir)) throw new Error(`已经有一个叫「${id}」的文件夹了`);
+  if (existsSync(dir)) throw new AppError('exists', [id]);
   await saveDef(dir, template, presetDef(template, name.trim() || id.trim()));
 }
 
@@ -255,7 +308,7 @@ export async function writeBuild(root: string, result: BuildResult) {
   if (existsSync(buildDir)) {
     const entries = await fs.readdir(buildDir);
     if (entries.length && !entries.includes(MANIFEST_FILE)) {
-      throw new Error(`${buildDir} 里已有不是本工具生成的文件，为避免误删，没有覆盖。请先移走它们。`);
+      throw new AppError('buildNotOurs', [buildDir]);
     }
     await fs.rm(buildDir, { recursive: true, force: true });
   }

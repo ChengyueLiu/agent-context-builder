@@ -1,6 +1,6 @@
-# 论文写作 · 附带资料
+# Paper writing · Reference
 
-## 科研写作指南
+## Scientific writing guides
 
-- Gopen & Swan, *The Science of Scientific Writing*：读者对句子位置的预期，以及如何据此组织段落。
-- 目标会议的作者指南与审稿表。
+- Gopen & Swan, *The Science of Scientific Writing*: what readers expect from each position in a sentence, and how to organize paragraphs accordingly.
+- The target venue's author guidelines and review form.

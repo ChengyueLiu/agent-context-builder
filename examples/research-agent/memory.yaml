@@ -1,47 +1,47 @@
-# 记忆管理：agent 脑子里记着的关键信息，每样几句话。
+# Memory management: the key facts the agent keeps in mind, a few sentences each.
 
 items:
   - id: project
-    name: 项目概况
+    name: Project overview
     scope: project
     path: memory/project.md
-    format: 研究问题、目标会议、要证明的论断、限制、截止时间、已排除的方向；一两句大致规划；用户拍过的板，附原因。
-    when: 项目开始时起草，用户确认后生效；用户拍板之后。
-    write: 研究问题、目标会议、论断和用户拍的板，改动要用户同意
+    format: The main question, scope and what is out of scope, success criteria, constraints, the research type and the workflow chosen for it; one or two sentences on the rough plan; the user's decisions so far, each with its reason.
+    when: When the user confirms the Project brief; after each user decision.
+    write: Changes to the research question, target venue, claims, and the user's decisions require the user's consent
     load: auto
-    limit: 一页以内
+    limit: One page at most
   - id: progress
-    name: 进展
+    name: Progress
     scope: project
     path: memory/progress.md
-    format: 当前在做什么、之前发生了什么（比如哪个实验失败了、用户否掉了什么）、接下来打算做什么，几句话。
-    when: 一步结束、用户拍板、实验出了意外结果之后。
-    write: 可以改写
+    format: What you're working on now, what happened before (e.g., which experiment failed, what the user rejected), and what you plan to do next, in a few sentences.
+    when: After a step ends, after the user decides something, or after an experiment produces an unexpected result.
+    write: Can be rewritten
     load: auto
-    limit: 10 行以内
+    limit: 10 lines at most
   - id: reference
-    name: 参考
+    name: References
     scope: project
     path: memory/reference.md
-    format: 工作中得知的外部信息去哪找，每条一行：是什么、在哪。比如用户提到的数据集、代码仓库、服务器。
-    when: 用户告诉你、或者自己找到一个以后还会用的信息来源时。
-    write: 可以改写
+    format: "Where to find external information you learned about during the work, one line each: what it is and where it is. For example, datasets, code repositories, and servers the user mentioned."
+    when: When the user tells you about, or you find on your own, an information source you'll use again later.
+    write: Can be rewritten
     load: on_demand
   - id: user
-    name: 用户
+    name: User
     scope: cross
     path: ~/memory/user.md
-    format: 用户的研究方向、熟悉的方法、喜欢怎么做。
-    when: 了解到用户的新情况时。
-    write: 可以改写
+    format: The user's research areas, the methods they know well, and how they like to work.
+    when: When you learn something new about the user.
+    write: Can be rewritten
     load: auto
-    limit: 20 行以内
+    limit: 20 lines at most
   - id: feedback
-    name: 反馈
+    name: Feedback
     scope: cross
     path: ~/memory/feedback.md
-    format: 用户纠正过、确认过的做法，每条一行，附原因。
-    when: 用户纠正你，或者确认了某种不明显的做法时。
-    write: 可以改写
+    format: Practices the user has corrected or confirmed, one line each, with the reason.
+    when: When the user corrects you, or confirms a non-obvious approach.
+    write: Can be rewritten
     load: auto
-    limit: 30 行以内
+    limit: 30 lines at most

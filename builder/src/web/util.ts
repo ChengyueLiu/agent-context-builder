@@ -1,5 +1,5 @@
 import { fieldPage, listDef, navPages, placeOf } from '../core/outline';
-import type { AgentDef, FileGroup, Item, ListKind, NavEntry, PartDef, Template } from '../core/types';
+import type { AgentDef, Item, ListKind, NavEntry, PartDef, Template } from '../core/types';
 import { LIST_KINDS } from '../core/types';
 
 /** 中间显示哪一页：系统提示词里单独成页的一节、一个部分、或部分里的一项。 */
@@ -57,13 +57,6 @@ export function groupOf(template: Template, page: string): string[] {
 /** 表单里一格在页面上的锚点 */
 export const anchorId = (field: string) => `field-${field.replace(':', '-')}`;
 
-export const GROUP_LABEL: Record<FileGroup, string> = {
-  start: '一开始就拿到',
-  message: '每条消息插入',
-  on_demand: '用到时才加载',
-  situation: '到时机时插入',
-  hidden: '不给 agent 看',
-};
 
 /** 清单里的一项在哪一页：分散在几页上的清单看这一项属于哪页，其余看清单放在哪个部分 */
 export function partOfItem(template: Template, kind: ListKind, item?: Item): PartDef {

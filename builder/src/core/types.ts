@@ -1,3 +1,4 @@
+import type { Lang } from './phrases';
 // 数据模型。纯类型，前后端共用。
 
 export type FieldType = 'text' | 'line' | 'select' | 'switch' | 'ref';
@@ -28,7 +29,7 @@ export interface FieldDef {
   dest?: string;
 }
 
-export const AUTO_IDS = ['insert_note', 'skill_index', 'knowledge_index', 'tool_notes', 'helper_list', 'memory_list', 'output_list', 'guarantee_note'] as const;
+export const AUTO_IDS = ['workflow_index', 'insert_note', 'skill_index', 'knowledge_index', 'tool_notes', 'helper_list', 'memory_list', 'output_list', 'guarantee_note'] as const;
 export type AutoId = (typeof AUTO_IDS)[number];
 
 /** 系统提示词里自动生成的一项：内容来自别的部分。 */
@@ -56,7 +57,7 @@ export interface PromptSection {
   auto?: AutoDef[];
 }
 
-export const LIST_KINDS = ['skills', 'knowledge', 'tools', 'helpers', 'provided', 'memory', 'outputs', 'guarantees', 'reminders', 'cases'] as const;
+export const LIST_KINDS = ['workflows', 'skills', 'knowledge', 'tools', 'helpers', 'provided', 'memory', 'outputs', 'guarantees', 'reminders', 'cases'] as const;
 export type ListKind = (typeof LIST_KINDS)[number];
 
 /** 一种清单：每一项有哪些格子。 */
@@ -90,6 +91,8 @@ export interface PartDef {
 
 export interface Template {
   version: number;
+  /** 大纲的语言：中文版 default.yaml，英文版 default.en.yaml，结构一样 */
+  language: Lang;
   budgets: {
     system_prompt_tokens: number;
     skill_lines: number;
@@ -122,6 +125,7 @@ export interface AgentDef {
   config: Record<string, string>;
   /** 系统提示词里人写的格子，按格子的 id */
   prompt: Record<string, string>;
+  workflows: Item[];
   skills: Item[];
   knowledge: Item[];
   tools: Item[];
@@ -174,8 +178,9 @@ export interface BuildResult {
   diagnostics: Diagnostic[];
 }
 
+/** 服务端给前端的数据：两种语言的大纲都给，界面和生成各取所需 */
 export interface ProjectData {
   root: string;
-  template: Template;
+  templates: Record<Lang, Template>;
   def: AgentDef;
 }

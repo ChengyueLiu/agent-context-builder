@@ -3,7 +3,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compile } from '../core/compile';
-import { loadDef, loadTemplate, writeBuild } from '../core/store';
+import { contentLang, loadDef, loadTemplates, writeBuild } from '../core/store';
 
 const ICON = { error: '✗', warning: '!' } as const;
 const GROUP = { start: '一开始就给', message: '每条消息插入', on_demand: '用到才加载', situation: '到时机时插入', hidden: '不给 agent 看' } as const;
@@ -13,9 +13,10 @@ async function main() {
   const root = process.argv[2]
     ? path.resolve(process.env.INIT_CWD ?? process.cwd(), process.argv[2])
     : fileURLToPath(new URL('../../../examples/research-agent', import.meta.url));
-  const template = await loadTemplate();
-  const def = await loadDef(root, template);
-  const result = compile(template, def);
+  // 命令行的提示用中文；生成的内容用 agent 自己的内容语言
+  const templates = await loadTemplates();
+  const def = await loadDef(root, templates.zh);
+  const result = compile(templates[contentLang(def)], def, 'zh');
   await writeBuild(root, result);
 
   console.log(`已生成 → ${path.join(root, 'build')}\n`);

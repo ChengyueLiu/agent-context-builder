@@ -88,32 +88,20 @@ prompt:
 
     - id: workflow
       name: 工作流程
-      order: [steps, entry, gates, review, fallback, retrospection, closing]
-      intro: 按什么步骤做。对所有任务都适用的；具体某一步怎么做，写进那一步的 skill。这个项目走到哪一步，记在「项目管理」里；两步之间的检查写在「过程纠正」的关卡里，复盘写在「事后改进」里。
+      order: [workflow_index, gates, review, fallback, retrospection, closing]
+      intro: 上面是所有流程都适用的规则，下面是流程清单：每种流程一项，写清什么时候选它、分几步、交付什么、怎样算完成。某一步具体怎么做，写进那一步的 skill；这个项目走到哪一步，记在「项目管理」里。
       fields:
-        - id: steps
-          label: 步骤
-          covers:
-            - 分几步、先后顺序
-            - 每一步开始时读哪个 skill
-          example: 研究分七步：调研定位、核心想法、快速验证、实验设计、实验执行、结果分析、论文写作。每一步开始时读这一步的 skill。
-          required: true
-        - id: entry
-          label: 起点
-          covers:
-            - 用户带着什么来，各从哪一步开始
-          example: 只有方向，从调研定位开始；有了想法，从核心想法开始；有半成品，先读懂它，再从对应的步骤开始。
         - id: fallback
           label: 回退
           covers:
-            - 做不下去时退回哪一步
-            - 退回时旧的产出怎么处理
-          example: 快速验证不通过，退回核心想法。退回时产出新写一版，旧版保留。
+            - 退回时旧的产出怎么处理，退回的原因记在哪
+            - 退回哪一步，写在各流程里
+          example: 退回时产出新写一版，旧版保留，并在规划里写明退回的原因。
         - id: gates
           label: 关卡
           page: reminders
           covers:
-            - 哪些地方必须通过检查才能往下走；检查的标准写在「交付与验收」和各 skill 里
+            - 哪些地方必须通过检查才能往下走；检查的标准写在各 skill 和流程里
             - 哪些节点停下来等用户批准，在哪里批准（聊天里打一句算不算）
             - 过不了关怎么办
           example: 进入下一步之前，对照这一步的合格标准逐条检查，不通过不往下走。
@@ -137,27 +125,13 @@ prompt:
           covers:
             - 整个任务结束时做什么：归档、提炼经验、最终汇报
           example: 任务结束前：归档工作记录，把这次的经验写成经验提议交给用户审，向用户做最终汇报。
+      auto:
+        - { id: workflow_index, label: 流程, from: 工作流程, from_part: workflow }
 
     - id: standards
       name: 交付与验收
-      intro: 交出什么东西、怎样才算验收通过。只写这个 agent 所有任务都适用的；某一类任务自己的合格标准写进对应的 skill，某一次任务的具体目标由用户交任务时给。
+      intro: 所有流程都适用的质量要求。每个流程交付什么、怎样算完成，写在工作流程的流程清单里；某一步自己的合格标准写进对应的 skill，某一次任务的具体目标由用户交任务时给。
       fields:
-        - id: deliverables
-          label: 交付物
-          covers:
-            - 逐项列出要交付什么，每项一句话说明是什么
-            - 具体格式写进对应的 skill，不写在这里
-          example: |-
-            - 论文初稿。
-            - 论断清单（论文要证明的几条结论，每条附所需的证据）：每条标明已支撑或无法支撑，附证据位置。
-          required: true
-        - id: done
-          label: 完成条件
-          covers:
-            - 写成能判断真假的句子
-            - 负结果算不算完成
-          example: 论断清单上的每一条，要么有证据支撑，要么已确认无法支撑。负结果也算完成。
-          required: true
         - id: quality
           label: 质量要求
           covers:
@@ -450,6 +424,7 @@ prompt:
           example: 每三个月复查一次；换新模型后，逐个去掉系统提醒和保证试一试，留下仍然需要的。
 
 parts:
+  - { id: workflow, name: 工作流程, intro: 上面是所有流程都适用的规则，下面是流程清单：每种流程一项。, lists: [workflows] }
   - { id: skills, name: Skill, intro: 某一类任务怎么做。每类任务一个，正文用到时才加载。, lists: [skills] }
   - { id: knowledge, name: 知识, intro: 查阅用的资料，由人提供，agent 只读。多个 skill 共用的放这里；只有一个 skill 用的，放那个 skill 的附带资料。, lists: [knowledge] }
   - { id: tools, name: 工具, intro: 它能执行的操作，调一次、结果确定。自己实现的工具，说明写进工具定义；平台自带和 MCP 的工具，只写补充用法。, lists: [tools] }
@@ -481,6 +456,47 @@ nav:
       - { name: 可靠性, intro: agent 本身不可靠，靠事前预防、过程纠正、事后改进来保证要求真的做到。, items: [guarantees, reminders, cases] }
 
 lists:
+  - kind: workflows
+    item: 流程
+    name_label: 名称
+    needs_id: true
+    id_hint: 用英文短名，会成为文件名，比如 claim-route
+    dest: workflows/<标识>.md · 选定后读；系统提示词 › 工作流程里列出名称和什么时候选
+    fields:
+      - id: when
+        label: 什么时候选它
+        hint: 按什么判断该用这条流程，比如研究类型。
+        example: 要提出一个论点并用实验验证它时。
+        required: true
+        dest: 系统提示词 › 工作流程
+      - id: steps
+        label: 步骤
+        hint: Markdown，按顺序列出每一步：用哪个 skill、产出什么、是不是用户拍板的点。
+        example: |-
+          1. 对齐（`alignment`）→ `brief.md`。用户确认项目简报。
+          2. 文献综述（`literature-review`）→ 相关工作和空白。
+        required: true
+      - id: entry
+        label: 起点
+        hint: 用户带着什么来，各从哪一步开始。
+        example: 不管用户带来什么，都先对齐；有半成品的，对齐时记下它已经覆盖了哪几步，再从第一个缺产出的步骤接着做。
+      - id: deliverables
+        label: 交付物
+        hint: 逐项列出这条流程最后交出什么，每项一句话。具体格式写在对应的 skill 里。
+        example: |-
+          - 论文初稿。
+          - 论断清单：每条标明成立、被推翻或有争议，附证据位置。
+        required: true
+      - id: done
+        label: 完成条件
+        hint: 写成能判断真假的句子；负结果算不算完成。
+        example: 论断清单上的每一条都有了结论和证据，交接包经用户批准。负结果也算完成。
+        required: true
+      - id: fallback
+        label: 回退
+        hint: 这条流程里做不下去时退回哪一步。
+        example: 论点被推翻，退回想法这一步。
+
   - kind: skills
     item: skill
     name_label: 名称
@@ -498,30 +514,10 @@ lists:
         hint: 容易和它混淆、但应该用别的 skill 的情况。
         example: 只是跑一个快速验证的小实验时不用，那属于“快速验证”。
         dest: 系统提示词 › Skill
-      - id: goal
-        label: 目的
-        example: 把论断清单变成可执行的实验方案，在跑实验之前就定下什么结果算支撑。
-      - id: practice
-        label: 具体做法
-        hint: 按顺序写步骤。
+      - id: body
+        label: 正文
+        hint: Markdown。这类任务怎么做：目的、要读什么、分几步、产出什么、合格标准、容易出的错（每条带原因）、范例……按需要组织，用二级、三级标题分段。
         required: true
-      - id: output
-        label: 产出什么
-        hint: 产出的内容和格式。
-        example: 实验方案，交用户拍板后进入实验执行。
-      - id: quality
-        label: 合格标准
-        hint: 逐条写，每条都要能检查。
-      - id: pitfalls
-        label: 容易出的错
-        hint: 每条带上理由。
-        example: 测试集只在最后用一次：反复看测试集，它就变成了验证集。
-      - id: examples
-        label: 范例
-      - id: scripts
-        label: 附带脚本
-        hint: 可以直接运行的脚本：放在 skill 目录的哪里、怎么运行、输出什么。脚本文件由开发者放进去。
-        example: "`scripts/check_format.py <论文目录>`：检查论文格式，列出不合格的地方。"
       - id: reference
         label: 附带资料
         hint: 需要时才查的长资料，会单独存成一个文件。
@@ -530,8 +526,11 @@ lists:
       - id: review
         name: 复盘
         when_use: 每一步结束时、出现失败后、整个任务结束时。
-        goal: 找出结果和预期差在哪、原因是什么，把值得记下的写成经验提议。
-        practice: |-
+        body: |-
+          找出结果和预期差在哪、原因是什么，把值得记下的写成经验提议。
+
+          ## 做法
+
           复盘时回答三个问题：
 
           1. 结果和预期差在哪。
@@ -539,7 +538,10 @@ lists:
           3. 下次应该怎么做。
 
           同时记下自己在哪些事上可靠、在哪些事上常出错。
-        output: 经验提议，交用户审。做法本身不对的，附上修改做法的建议。
+
+          ## 产出
+
+          经验提议，交用户审。做法本身不对的，附上修改做法的建议。
 
   - kind: knowledge
     item: 资料
@@ -647,7 +649,7 @@ lists:
   - kind: helpers
     item: 帮手
     name_label: 名称
-    dest: 系统提示词 › 帮手
+    dest: helpers/<标识>.md · 派活前读；系统提示词 › 资源里列出名字、能做什么、什么时候交给它
     fields:
       - id: purpose
         label: 能做什么
@@ -766,7 +768,7 @@ lists:
   - kind: reminders
     item: 自动提醒
     name_label: 名称
-    dest: reminders/<标识>.md · 到时机时插入；系统提示词 › 可靠性里列出时机
+    dest: reminders/<标识>.md · 到时机时插入；系统提示词 › 环境里说明提醒来自系统
     fields:
       - id: trigger
         label: 什么时候
@@ -787,7 +789,7 @@ lists:
   - kind: guarantees
     item: 系统保证
     name_label: 规矩
-    dest: guarantees.md · 交给工程实现；系统提示词 › 可靠性里列出规矩
+    dest: guarantees.md · 交给工程实现；系统提示词 › 信息安全里只说被拦下时怎么办
     fields:
       - id: how
         label: 怎么强制
