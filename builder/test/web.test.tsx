@@ -77,6 +77,19 @@ describe('配置', () => {
     }
   });
 
+  it('每一格、每一项都标着怎么给到 agent', () => {
+    const memory = html(<PartPage part={project.template.parts.find((p) => p.id === 'memory')!} />);
+    expect(memory).toContain('加载');
+    expect(memory).toContain('按时机');
+    expect(memory).toContain('按需');
+    const skills = html(<PartPage part={project.template.parts.find((p) => p.id === 'skills')!} />);
+    expect(skills).toContain('按需');
+    const guarantees = html(<PartPage part={project.template.parts.find((p) => p.id === 'guarantees')!} />);
+    expect(guarantees).toContain('不给 agent');
+    const identity = html(<SectionPage section={project.template.prompt.sections.find((s) => s.id === 'identity')!} />);
+    expect(identity).toContain('常驻');
+  });
+
   it('单独成页的节：每一格都有填写的地方', () => {
     for (const id of ['identity', 'workflow', 'standards', 'collab', 'principles', 'process', 'security', 'harm', 'compliance']) {
       const section = project.template.prompt.sections.find((s) => s.id === id)!;

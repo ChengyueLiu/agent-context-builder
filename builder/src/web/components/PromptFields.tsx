@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import type { FieldDef } from '../../core/types';
 import { useEditor } from '../agentContext';
 import { useLang } from '../i18n';
+import { fieldLoad } from '../../core/compile';
 import { anchorId } from '../util';
+import LoadTag from './LoadTag';
 import { Help } from './Page';
 import type { Values } from './useDraft';
 
@@ -55,8 +57,10 @@ export default function PromptFields({ fields, draft, set }: Props) {
       {titled(fields) && (
         <div className="prompt-block-title">
           {f.label}
-          {f.prompt === false && <span className="prompt-block-note">{t.notInPrompt}</span>}
           <Help text={covers(undefined, f.covers)} />
+          <span className="prompt-block-note">
+            <LoadTag {...fieldLoad(f)} />
+          </span>
         </div>
       )}
       <Input.TextArea

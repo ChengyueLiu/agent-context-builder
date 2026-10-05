@@ -1,7 +1,7 @@
 // 合成：把大纲里填的内容，合成 agent 最终拿到的文件。纯函数，不碰磁盘。
 
 import YAML from 'yaml';
-import type { AgentDef, AutoId, BuildResult, Diagnostic, FileGroup, Item, OutputFile, PromptSection, Segment, Template } from './types';
+import type { AgentDef, AutoId, BuildResult, Diagnostic, FieldDef, FileGroup, Item, ListKind, OutputFile, PromptSection, Segment, Template } from './types';
 import { LIST_KINDS } from './types';
 import { ID_RULES, itemFields, listDef, optionLabel, selectValue, text } from './outline';
 import { CONTENT, UI, type ContentPhrases, type Lang } from './phrases';
@@ -103,6 +103,55 @@ function outputLine(template: Template, o: Item): string {
       o.confirm === true ? P.confirmed : '',
     ])
   );
+}
+
+/** 一样东西怎么给到 agent：常驻（系统提示词或工具定义里）、按需读、按时机由系统插入、不给 agent */
+export type LoadMode = 'resident' | 'on_demand' | 'timed' | 'hidden';
+/** 为什么是这种加载方式，界面按它写成一句说明 */
+export type LoadWhy =
+  | 'field'
+  | 'field_hidden'
+  | 'index_body'
+  | 'not_generated'
+  | 'tool_definition'
+  | 'platform_tool'
+  | 'runtime'
+  | 'memory_auto'
+  | 'memory_on_demand'
+  | 'output_in_skill'
+  | 'output_listed'
+  | 'reminder'
+  | 'guarantee'
+  | 'case';
+
+/** 系统提示词里的一格 */
+export const fieldLoad = (f: FieldDef): { mode: LoadMode; why: LoadWhy } => (f.prompt === false ? { mode: 'hidden', why: 'field_hidden' } : { mode: 'resident', why: 'field' });
+
+/** 清单里的一项怎么给到 agent。和下面 compile 的生成规则一致 */
+export function itemLoad(template: Template, def: AgentDef, kind: ListKind, item: Item): { mode: LoadMode; why: LoadWhy } {
+  switch (kind) {
+    case 'workflows':
+      return text(item.steps) ? { mode: 'on_demand', why: 'index_body' } : { mode: 'hidden', why: 'not_generated' };
+    case 'skills':
+      return skillHasBody(template, item) ? { mode: 'on_demand', why: 'index_body' } : { mode: 'hidden', why: 'not_generated' };
+    case 'knowledge':
+    case 'helpers':
+      return { mode: 'on_demand', why: 'index_body' };
+    case 'tools':
+      return { mode: 'resident', why: isOwnTool(item) ? 'tool_definition' : 'platform_tool' };
+    case 'provided':
+      return { mode: 'timed', why: 'runtime' };
+    case 'memory':
+      return item.load === 'on_demand' ? { mode: 'on_demand', why: 'memory_on_demand' } : { mode: 'timed', why: 'memory_auto' };
+    case 'outputs':
+      return outputsOf(template, def).includes(item) ? { mode: 'resident', why: 'output_listed' } : { mode: 'on_demand', why: 'output_in_skill' };
+    case 'reminders':
+      return { mode: 'timed', why: 'reminder' };
+    case 'guarantees':
+      return { mode: 'hidden', why: 'guarantee' };
+    case 'cases':
+      return { mode: 'hidden', why: 'case' };
+  }
 }
 
 /** 选了某个 skill 的产出物写进那个 skill；没选、或选的 skill 不生成的，写进系统提示词 */

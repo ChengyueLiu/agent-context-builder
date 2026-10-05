@@ -2,7 +2,8 @@ import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from
 import { App, Button, Flex, Form, Input, Modal, Popconfirm, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useState } from 'react';
-import { skillHasBody } from '../../core/compile';
+import { fieldLoad, itemLoad, skillHasBody } from '../../core/compile';
+import LoadTag from './LoadTag';
 import { ID_RULES, itemFields, itemStatus, listDef, nextId, pageFields, placeOf } from '../../core/outline';
 import { ProCard } from '@ant-design/pro-components';
 import type { Item, ListDef, ListKind, PartDef } from '../../core/types';
@@ -74,10 +75,11 @@ export default function PartPage({ part }: { part: PartDef }) {
           <ProCard
             title={
               single && (
-                <>
+                <Flex align="center" gap={8}>
                   {single.label}
                   <Help text={headerHelp(undefined, fields)} />
-                </>
+                  <LoadTag {...fieldLoad(single)} />
+                </Flex>
               )
             }
             headerBordered={!!single}
@@ -201,6 +203,12 @@ function ItemList({ list, title, filter, preset }: ListProps) {
         },
       };
     }),
+    {
+      title: t.loadColumn,
+      key: 'load',
+      width: 110,
+      render: (_, item) => <LoadTag {...itemLoad(project.contentTemplate, project.def, kind, item)} />,
+    },
     {
       title: t.status,
       key: 'status',

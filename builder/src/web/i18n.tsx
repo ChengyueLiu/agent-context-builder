@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react';
 import type { FileGroup } from '../core/types';
+import type { LoadMode, LoadWhy } from '../core/compile';
 import type { Lang } from '../core/phrases';
 
 const zh = {
@@ -72,7 +73,6 @@ const zh = {
   fieldRequired: '这一格不能空着',
   idExists: '已经有这个标识了',
   covers: '要写到：',
-  notInPrompt: '不进系统提示词',
   example: (s: string) => `例：${s}`,
   none: '不选',
   filled: '已填',
@@ -107,6 +107,24 @@ const zh = {
     hidden: '不给 agent 看',
   } as Record<FileGroup, string>,
   langName: { zh: '中文', en: 'English' } as Record<Lang, string>,
+  loadColumn: '加载',
+  load: { resident: '常驻', on_demand: '按需', timed: '按时机', hidden: '不给 agent' } as Record<LoadMode, string>,
+  loadWhy: {
+    field: '常驻：写进系统提示词，每次都给 agent',
+    field_hidden: '不进系统提示词，只记在配置清单里',
+    index_body: '名称和什么时候用常驻在系统提示词里，正文 agent 用到时才读',
+    not_generated: '还没写正文，不生成，agent 看不到',
+    tool_definition: '工具定义随每次请求发给模型',
+    platform_tool: '补充用法常驻在系统提示词里',
+    runtime: '说明常驻在系统提示词里，值由系统按时机插入',
+    memory_auto: '清单常驻在系统提示词里，内容在开工和压缩之后由系统插入',
+    memory_on_demand: '清单常驻在系统提示词里，内容 agent 需要时才读',
+    output_in_skill: '写进产出它的那个 skill，进了那一步才读',
+    output_listed: '列在系统提示词的产出物清单里',
+    reminder: '到时机时由系统插入',
+    guarantee: '交给工程实现，不给 agent；系统提示词里只说一句被拦下时怎么办',
+    case: '用来检验 agent，不给 agent',
+  } as Record<LoadWhy, string>,
   helpTitle: '怎么用',
   helpWhereTitle: '一段内容该写在哪',
   helpWhereIntro: '先分功能性还是非功能性：把它去掉以后，agent 还知不知道要做什么、怎么做？',
@@ -192,7 +210,6 @@ const en: Dict = {
   fieldRequired: 'This field is required',
   idExists: 'This identifier already exists',
   covers: 'Cover:',
-  notInPrompt: 'Not in the system prompt',
   example: (s: string) => `e.g. ${s}`,
   none: 'None',
   filled: 'Filled',
@@ -227,6 +244,24 @@ const en: Dict = {
     hidden: 'Not for the agent',
   },
   langName: { zh: '中文', en: 'English' },
+  loadColumn: 'Loading',
+  load: { resident: 'Resident', on_demand: 'On demand', timed: 'Timed', hidden: 'Not for agent' },
+  loadWhy: {
+    field: 'Resident: written into the system prompt, given to the agent every time',
+    field_hidden: 'Not in the system prompt; kept only in the manifest',
+    index_body: 'The name and when to use it stay in the system prompt; the agent reads the body only when needed',
+    not_generated: 'No body yet: not generated, so the agent cannot see it',
+    tool_definition: 'The tool definition is sent to the model with every request',
+    platform_tool: 'The usage note stays in the system prompt',
+    runtime: 'The explanation stays in the system prompt; the system inserts the value at set times',
+    memory_auto: 'Listed in the system prompt; the system inserts the content at session start and after compaction',
+    memory_on_demand: 'Listed in the system prompt; the agent reads the content when needed',
+    output_in_skill: 'Written into the skill that produces it, read only at that step',
+    output_listed: "Listed in the system prompt's output list",
+    reminder: 'Inserted by the system when triggered',
+    guarantee: 'Implemented by engineering, not given to the agent; the system prompt only says what to do when blocked',
+    case: 'Used to test the agent; not given to it',
+  },
   helpTitle: 'How to use',
   helpWhereTitle: 'Where a piece of content goes',
   helpWhereIntro: 'First decide functional or non-functional: without it, would the agent still know what to do and how?',

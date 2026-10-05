@@ -3,7 +3,9 @@ import { App, Button, Flex } from 'antd';
 import { useState } from 'react';
 import { pageFields } from '../../core/outline';
 import type { PromptSection } from '../../core/types';
+import { fieldLoad } from '../../core/compile';
 import { useEditor } from '../agentContext';
+import LoadTag from './LoadTag';
 import { useLang } from '../i18n';
 import { groupOf } from '../util';
 import Page from './Page';
@@ -46,7 +48,17 @@ export default function SectionPage({ section }: { section: PromptSection }) {
         </Button>
       }
     >
-      <ProCard>
+      <ProCard
+        title={
+          fields.length === 1 && (
+            <Flex align="center" gap={8}>
+              {fields[0].label}
+              <LoadTag {...fieldLoad(fields[0])} />
+            </Flex>
+          )
+        }
+        headerBordered={fields.length === 1}
+      >
         <Flex vertical gap={20}>
           <PromptFields fields={fields} draft={draft} set={set} />
         </Flex>
