@@ -9,19 +9,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { compile } from '../core/compile';
-import {
-  agentDir,
-  createAgent,
-  deleteCard,
-  isAgentDir,
-  listAgents,
-  loadProject,
-  loadTemplate,
-  saveAgent,
-  saveCard,
-  writeBuild,
-} from '../core/project';
-import type { AgentSpec, CardInput } from '../core/types';
+import { agentDir, createAgent, isAgentDir, listAgents, loadDef, loadTemplate, patchDef, writeBuild } from '../core/store';
+import type { DefPatch } from '../core/types';
 
 const builderRoot = fileURLToPath(new URL('../..', import.meta.url));
 const port = Number(process.env.PORT ?? 5299);
@@ -31,18 +20,18 @@ const given = process.argv[2] ? path.resolve(process.env.INIT_CWD ?? process.cwd
 const workspace = given ? (isAgentDir(given) ? path.dirname(given) : given) : path.join(builderRoot, '../examples');
 const openFirst = given && isAgentDir(given) ? path.basename(given) : undefined;
 
-/** 读项目、编译、写 build/，返回给前端的完整状态。每次改动后都调用，保证 build/ 与卡片同步。 */
+/** 读定义、合成、写 build/，返回给前端的完整状态。每次改动后都调用，保证 build/ 与定义同步。 */
 async function snapshot(root: string) {
   const template = await loadTemplate();
-  const project = await loadProject(root, template);
-  const build = compile(template, project.agent, project.cards);
+  const def = await loadDef(root, template);
+  const build = compile(template, def);
   let buildError: string | undefined;
   try {
     await writeBuild(root, build);
   } catch (e) {
     buildError = (e as Error).message;
   }
-  return { ...project, build, buildError };
+  return { root, template, def, build, buildError };
 }
 
 /** 读写磁盘的操作排队执行：两个请求同时重写 build/ 会互相删掉对方的文件。 */
@@ -69,53 +58,21 @@ api.get('/agents', async (_req, res) => {
 });
 api.post('/agents', async (req, res) => {
   const { id, name } = req.body as { id: string; name: string };
-  await exclusive(() => createAgent(workspace, String(id ?? ''), String(name ?? '')));
+  await exclusive(async () => createAgent(workspace, String(id ?? ''), String(name ?? ''), await loadTemplate()));
   res.json({ workspace, agents: await listAgents(workspace) });
 });
 api.get('/agents/:id/project', async (req, res) => {
   const root = rootOf(req);
   res.json(await exclusive(() => snapshot(root)));
 });
-api.put('/agents/:id/agent', async (req, res) => {
+api.put('/agents/:id/def', async (req, res) => {
   const root = rootOf(req);
   res.json(
     await exclusive(async () => {
-      await saveAgent(root, req.body as AgentSpec);
+      await patchDef(root, await loadTemplate(), req.body as DefPatch);
       return snapshot(root);
     }),
   );
-});
-api.post('/agents/:id/card', async (req, res) => {
-  const root = rootOf(req);
-  const { path: _ignored, ...input } = req.body as CardInput;
-  res.json(
-    await exclusive(async () => {
-      const card = await saveCard(root, await loadTemplate(), input);
-      return { card, project: await snapshot(root) };
-    }),
-  );
-});
-api.put('/agents/:id/card', async (req, res) => {
-  const root = rootOf(req);
-  res.json(
-    await exclusive(async () => {
-      const card = await saveCard(root, await loadTemplate(), req.body as CardInput);
-      return { card, project: await snapshot(root) };
-    }),
-  );
-});
-api.delete('/agents/:id/card', async (req, res) => {
-  const root = rootOf(req);
-  res.json(
-    await exclusive(async () => {
-      await deleteCard(root, String(req.query.path ?? ''));
-      return snapshot(root);
-    }),
-  );
-});
-api.post('/agents/:id/build', async (req, res) => {
-  const root = rootOf(req);
-  res.json(await exclusive(() => snapshot(root)));
 });
 app.use('/api', api);
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

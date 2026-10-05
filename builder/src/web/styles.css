@@ -15,7 +15,7 @@ body,
 .app-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   padding: 0 16px;
   height: 52px;
   flex-shrink: 0;
@@ -26,8 +26,8 @@ body,
 .app-title {
   font-weight: 600;
   font-size: 15px;
-  cursor: pointer;
   white-space: nowrap;
+  margin-right: 8px;
 }
 
 .app-body {
@@ -36,7 +36,7 @@ body,
 }
 
 .app-sider {
-  width: 300px;
+  width: 330px;
   flex-shrink: 0;
   background: #fff;
   border-right: 1px solid #f0f0f0;
@@ -50,90 +50,355 @@ body,
   background: #f5f5f5;
 }
 
-/* 卡片编辑器和预览自己管理滚动 */
-.app-main-fill {
-  overflow: hidden;
-}
-
 .panel {
   padding: 20px 24px;
   max-width: 1100px;
 }
 
-/* 卡片编辑器：左正文、右标签，撑满高度 */
-.card-editor {
+/* 右边的一页 */
+.page {
+  max-width: 860px;
+  padding: 0 24px 80px;
+}
+
+.page-wide {
+  max-width: 1160px;
+}
+
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 -24px 16px;
+  padding: 14px 24px 12px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.page-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-header-intro {
+  margin-top: 6px;
+  color: #595959;
+}
+
+.page-header-dest {
+  margin-top: 4px;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+/* 一块内容：一个大栏目，或者单独的一格 */
+.card {
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+.card-title {
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card-dest {
+  margin-bottom: 14px;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.card-auto {
+  background: #fafcff;
+  border-style: dashed;
+  border-color: #adc6ff;
+}
+
+/* 一格 */
+.field {
+  margin: 0 -8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  scroll-margin-top: 120px;
+  transition: background-color 0.6s;
+}
+
+.field + .field {
+  margin-top: 14px;
+}
+
+.flash {
+  background: #fffbe6;
+}
+
+.field-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.field-label {
+  font-weight: 600;
+}
+
+.field-dest {
+  margin-left: auto;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.field-hint {
+  margin-bottom: 6px;
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+.composed {
+  background: #fff;
+}
+
+/* 大纲 */
+.outline {
+  padding: 8px 8px 24px;
+}
+
+.outline-bar {
+  padding: 0 4px 8px;
+}
+
+.outline .ant-tree-node-content-wrapper {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tree-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-right {
+  flex-shrink: 0;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.tree-muted .tree-name {
+  color: #bfbfbf;
+}
+
+.tree-auto {
+  color: #2f54eb;
+  font-size: 12px;
+}
+
+.tree-required {
+  color: #d46b08;
+}
+
+/* 表格 */
+.row-click {
+  cursor: pointer;
+}
+
+.cell-section {
+  vertical-align: top;
+  background: #fafafa;
+}
+
+.overview-list + .overview-list {
+  margin-top: 16px;
+}
+
+.overview-list .card-dest {
+  margin-bottom: 8px;
+}
+
+.chip {
+  margin: 0;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 8px;
+}
+
+/* 预览 */
+.segment {
+  position: relative;
+}
+
+.segment-edit {
+  float: right;
+  margin-left: 12px;
+}
+
+pre.raw {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.markdown .wmde-markdown {
+  font-family: inherit;
+}
+
+.help-list {
+  padding-left: 20px;
+}
+
+.help-list li {
+  margin-bottom: 6px;
+}
+
+/* 系统提示词 */
+.prompt-block {
+  scroll-margin-top: 200px;
+}
+
+.prompt-block-title {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.prompt-auto {
+  padding: 10px 14px;
+}
+
+.prompt-raw {
+  margin: 0 0 1em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.prompt-outline {
+  position: sticky;
+  top: 200px;
+  width: 220px;
+  flex-shrink: 0;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.outline-empty {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.outline-mark {
+  margin-inline-start: 6px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* 页头固定在顶部时要有底色，否则滚动时正文会透出来 */
+.ant-pro-page-container-affix .ant-affix {
+  background: #f5f5f5;
+}
+
+.prompt-view + .prompt-view {
+  margin-top: 28px;
+}
+
+/* 左侧目录的分组名 */
+.tree-group {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* 中间配置、右边系统提示词并排 */
+.workspace {
+  display: flex;
+  align-items: flex-start;
+}
+
+.workspace-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-prompt {
+  position: sticky;
+  top: 56px;
+  width: 44%;
+  min-width: 420px;
+  max-width: 720px;
+  height: calc(100vh - 56px);
+  flex-shrink: 0;
+  border-left: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.prompt-pane {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-.card-editor-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  background: #fff;
+.prompt-pane-head {
+  padding: 12px 16px 10px;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.card-editor-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-}
-
-.card-editor-text {
-  flex: 1;
-  min-width: 0;
-  padding: 12px;
-}
-
-.card-editor-text .w-md-editor {
-  height: 100% !important;
-}
-
-.card-editor-meta {
-  width: 340px;
-  flex-shrink: 0;
-  overflow: auto;
-  padding: 12px 16px;
-  background: #fff;
-  border-left: 1px solid #f0f0f0;
-}
-
-.row-link {
-  display: block;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: inherit;
-}
-
-.row-link:hover {
-  background: #f5f5f5;
-}
-
-.tree-muted {
-  color: #bfbfbf;
-}
-
-.tree-count {
-  color: #8c8c8c;
+.prompt-pane-meta {
+  margin-top: 10px;
+  color: rgba(0, 0, 0, 0.45);
   font-size: 12px;
-  margin-left: 6px;
 }
 
-.markdown-box {
-  background: #fff;
-  padding: 16px 20px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
+.prompt-pane-body {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  padding: 8px 16px 40vh;
 }
 
-.markdown-box pre.raw {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 13px;
-  line-height: 1.6;
+.prompt-seg {
+  position: relative;
+  padding: 8px 12px;
+  margin: 0 -12px;
+  border-left: 3px solid transparent;
+  border-radius: 2px;
+}
+
+.prompt-seg-focus {
+  border-left-color: #1677ff;
+  background: #f5f9ff;
+}
+
+.prompt-seg-edit {
+  float: right;
+  margin: 4px 0 4px 12px;
+  font-size: 12px;
+  visibility: hidden;
+}
+
+.prompt-seg:hover .prompt-seg-edit,
+.prompt-seg-focus .prompt-seg-edit {
+  visibility: visible;
+}
+
+.tree-subgroup {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.prompt-block-note {
+  margin-inline-start: 8px;
+  font-weight: normal;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
 }

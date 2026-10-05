@@ -1,52 +1,94 @@
-import { isEditable } from '../core/template';
-import type { Diagnostic, PlaceKind, Template, TemplatePiece } from '../core/types';
-import type { ProjectPayload } from './api';
+import { fieldPage, listDef, navPages, placeOf } from '../core/outline';
+import type { AgentDef, FileGroup, Item, ListKind, NavEntry, PartDef, Template } from '../core/types';
+import { LIST_KINDS } from '../core/types';
 
-/** 当前选中的东西。编辑视图的中间区域据此显示。 */
-export type Selection =
-  | { type: 'overview' }
-  | { type: 'piece'; id: string }
-  | { type: 'entry'; id: string }
-  | { type: 'card'; path: string }
-  | { type: 'group'; when: string };
+/** 中间显示哪一页：系统提示词里单独成页的一节、一个部分、或部分里的一项。 */
+export type Route = { type: 'section'; id: string } | { type: 'part'; id: string } | { type: 'item'; kind: ListKind; id: string };
 
-export type View = 'edit' | 'skeleton' | 'preview';
+/** 路由和字符串互转。生成结果和问题列表里的“去配置”链接用字符串记位置。 */
+export function routeKey(r: Route): string {
+  return r.type === 'item' ? `item:${r.kind}:${r.id}` : `${r.type}:${r.id}`;
+}
 
-export const PLACE_LABEL: Record<PlaceKind, string> = {
-  system_prompt: '系统提示词',
-  skill: 'skill',
-  tool: '工具描述',
-  reminder: '运行时提醒',
-  file: '参考资料',
-  index: '资料索引',
-  mechanisms: '机制清单',
-  manifest: '加载清单',
+export function parseRouteKey(key: string): Route | undefined {
+  const [type, a, ...rest] = key.split(':');
+  if ((type === 'section' || type === 'part') && a) return { type, id: a };
+  if (type === 'item' && (LIST_KINDS as readonly string[]).includes(a) && rest.length) return { type: 'item', kind: a as ListKind, id: rest.join(':') };
+  return undefined;
+}
+
+/** 同一个位置只有一种写法：和某个部分同名的节，就是那个部分的页面 */
+export function canonical(template: Template, r: Route): Route {
+  return r.type === 'section' && template.parts.some((p) => p.id === r.id) ? { type: 'part', id: r.id } : r;
+}
+
+/** 左侧目录里的第一页，打开 agent 时默认显示 */
+export function firstRoute(template: Template): Route {
+  return canonical(template, { type: 'section', id: navPages(template.nav)[0] });
+}
+
+/** 这一页对应系统提示词里的哪一节，右边的系统提示词跟着滚到那里 */
+export function sectionOf(template: Template, r: Route, def?: AgentDef): string | undefined {
+  const page = r.type === 'item' ? partOfItem(template, r.kind, def?.[r.kind].find((x) => x.id === r.id)).id : r.id;
+  const { sections } = template.prompt;
+  if (sections.some((s) => s.id === page)) return page;
+  return (
+    sections.find((s) => s.fields.some((f) => fieldPage(s, f) === page))?.id ??
+    sections.find((s) => (s.auto ?? []).some((a) => a.from_part === page))?.id
+  );
+}
+
+/** 这一页在左侧目录里属于哪几层分组，从外到里 */
+export function groupOf(template: Template, page: string): string[] {
+  const walk = (entries: NavEntry[], above: string[]): string[] | undefined => {
+    for (const e of entries) {
+      if (typeof e === 'string') {
+        if (e === page) return above;
+      } else {
+        const found = walk(e.items, [...above, e.name]);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+  return walk(template.nav, []) ?? [];
+}
+
+/** 表单里一格在页面上的锚点 */
+export const anchorId = (field: string) => `field-${field.replace(':', '-')}`;
+
+export const GROUP_LABEL: Record<FileGroup, string> = {
+  start: '一开始就拿到',
+  message: '每条消息插入',
+  on_demand: '用到时才加载',
+  situation: '到时机时插入',
+  hidden: '不给 agent 看',
 };
 
-/** 编辑器里显示的件和条目：只有开发者写的，运行时产生的、由用户填的都不显示。 */
-export function editablePieces(template: Template): TemplatePiece[] {
-  return template.pieces
-    .map((p) => ({ ...p, entries: p.entries.filter((e) => isEditable(template, e)) }))
-    .filter((p) => p.entries.length > 0);
+/** 清单里的一项在哪一页：分散在几页上的清单看这一项属于哪页，其余看清单放在哪个部分 */
+export function partOfItem(template: Template, kind: ListKind, item?: Item): PartDef {
+  const place = item ? placeOf(listDef(template, kind), item) : undefined;
+  return template.parts.find((p) => p.id === place) ?? template.parts.find((p) => p.lists.includes(kind))!;
 }
 
-export function allDiagnostics(p: ProjectPayload): Diagnostic[] {
-  return [...p.loadDiagnostics, ...p.build.diagnostics];
-}
-
-/** 渲染预览时，把文件开头的 yaml frontmatter 显示成代码块，而不是被当成分隔线。 */
+/** 渲染预览时，把文件开头的 yaml 头部显示成代码块，而不是被当成分隔线。 */
 export function renderable(content: string): string {
   const m = content.match(/^---\n([\s\S]*?)\n---\n?/);
   return m ? `\`\`\`yaml\n${m[1]}\n\`\`\`\n${content.slice(m[0].length)}` : content;
 }
 
-/** 正文的第一行有意义的文字，用于列表预览。 */
-export function firstLine(body: string, max = 60): string {
-  const line = body
-    .split('\n')
-    .filter((l) => !l.trimStart().startsWith('#'))
-    .map((l) => l.replace(/^[>\-*\d.\s]+/, '').trim())
-    .find(Boolean);
-  if (!line) return '（空）';
-  return line.length > max ? `${line.slice(0, max)}…` : line;
+// ---------- 网址：#/<agent>/<位置> ----------
+
+export function hashOf(agent: string, route: Route): string {
+  return `#/${encodeURIComponent(agent)}/${encodeURIComponent(routeKey(route))}`;
+}
+
+export function agentInHash(): string | undefined {
+  const m = location.hash.match(/^#\/([^/]+)/);
+  return m ? decodeURIComponent(m[1]) : undefined;
+}
+
+export function routeInHash(): Route | undefined {
+  const key = location.hash.split('/').map((x) => decodeURIComponent(x)).at(-1) ?? '';
+  return parseRouteKey(key);
 }

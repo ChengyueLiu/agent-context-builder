@@ -1,0 +1,32 @@
+[
+  {
+    "name": "literature_search",
+    "description": "检索学术文献，返回元数据和摘要。\n\n什么时候用：调研相关工作、核对引用出处的时候。\n\n参数与返回：\n参数：\n- `query`：检索词，用英文效果更好。\n- `years`：年份范围，如 `2023-2026`。\n- `limit`：返回条数，默认 20。\n\n返回：每篇的标题、作者、年份、会议、摘要、链接。\n\n示例：`{\"query\": \"long-context transformer stability\", \"years\": \"2023-2026\", \"limit\": 20}`\n\n输出上限：\n最多返回 50 条；摘要超过 500 字时截断。\n\n使用步骤和禁忌：\n检索后先把结果存档，再引用。引用只能来自存档的检索结果。\n\n影响：只读。",
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "run_experiment",
+    "description": "在沙箱中运行一次实验。\n\n什么时候用：快速验证和实验执行这两步。\n\n参数与返回：\n参数：\n- `config`：实验配置文件的路径。\n- `seed`：随机种子。\n\n返回：运行 id、状态、结果文件和日志的位置。\n\n示例：`{\"config\": \"configs/ablation-1.yaml\", \"seed\": 42}`\n\n输出上限：\n日志只返回最后 200 行，完整日志在返回的日志位置。\n\n使用步骤和禁忌：\n1. 跑实验前，先把配置登记到实验记录：代码版本、超参、数据、随机种子。\n2. 跑完把结果和日志位置追加到实验记录，不改已有的记录。\n\n出错怎么办：\n失败时先记录失败原因，再决定是否重试。\n\n影响：改本地文件。",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    }
+  },
+  {
+    "name": "update_plan",
+    "description": "查看和更新这个项目的规划与待办。\n\n什么时候用：开始做一项、做完一项、卡住、要加待办的时候。\n\n参数与返回：\n参数：\n- `action`：`list` 查看，`add` 加一项，`update` 改一项。\n- `step`：属于七步里的哪一步。\n- `item`：加的时候写待办的内容，改的时候写编号。\n- `status`：待做、在做、做完、放弃、受阻。\n- `note`：放弃的原因，或者受阻时在等什么。\n\n返回：更新后的规划和当前这一步的待办。\n\n影响：改本地文件。",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    }
+  },
+  {
+    "name": "ask_user",
+    "description": "向用户提一组问题并等待回答。\n\n什么时候用：遇到必须用户拍板的事，或者会影响论断和方案的不确定处。\n\n参数与返回：\n参数：\n- `questions`：问题列表，每个问题附 2 到 4 个选项，推荐的选项放第一个。\n\n返回：用户的选择，或用户自己写的回答。\n\n影响：只读。",
+    "annotations": {
+      "readOnlyHint": true
+    }
+  }
+]

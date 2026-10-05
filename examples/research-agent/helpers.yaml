@@ -1,0 +1,9 @@
+# 帮手：能把活交出去的对象。
+
+items:
+  - id: h1
+    name: 文献调研 agent
+    purpose: 给定主题，返回整理好的相关工作表。
+  - id: h2
+    name: 审稿 agent
+    purpose: 按目标会议的审稿标准审读稿件，返回意见。

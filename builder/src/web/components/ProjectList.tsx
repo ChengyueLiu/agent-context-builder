@@ -41,7 +41,7 @@ export default function ProjectList({ onOpen }: Props) {
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-title">Agent 上下文编辑器</span>
+        <span className="app-title">Agent 定义编辑器</span>
         <div style={{ flex: 1 }} />
         <Typography.Text type="secondary">{data.workspace}</Typography.Text>
       </header>
@@ -69,7 +69,7 @@ export default function ProjectList({ onOpen }: Props) {
                     {a.description || '没有说明'}
                   </Typography.Paragraph>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {a.id} · {a.cards} 张卡片
+                    {a.id}
                   </Typography.Text>
                 </Card>
               ))}

@@ -1,11 +1,12 @@
-// 命令行编译：npm run build-agent -- <agent 文件夹>
+// 命令行生成：npm run build-agent -- <agent 文件夹>
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compile } from '../core/compile';
-import { loadProject, loadTemplate, writeBuild } from '../core/project';
+import { loadDef, loadTemplate, writeBuild } from '../core/store';
 
-const ICON = { error: '✗', warning: '!', info: '·' } as const;
+const ICON = { error: '✗', warning: '!' } as const;
+const GROUP = { start: '一开始就给', message: '每条消息插入', on_demand: '用到才加载', situation: '到时机时插入', hidden: '不给 agent 看' } as const;
 
 async function main() {
   // npm run 会把工作目录切到 builder/，用户给的相对路径按他敲命令的目录解析
@@ -13,24 +14,20 @@ async function main() {
     ? path.resolve(process.env.INIT_CWD ?? process.cwd(), process.argv[2])
     : fileURLToPath(new URL('../../../examples/research-agent', import.meta.url));
   const template = await loadTemplate();
-  const project = await loadProject(root, template);
-  const result = compile(template, project.agent, project.cards);
+  const def = await loadDef(root, template);
+  const result = compile(template, def);
   await writeBuild(root, result);
 
-  console.log(`已编译 ${project.cards.length} 张卡片 → ${path.join(root, 'build')}\n`);
+  console.log(`已生成 → ${path.join(root, 'build')}\n`);
   for (const f of result.files) {
-    const size = f.tokens ? `约 ${f.tokens} token` : '不进上下文';
-    console.log(`  ${f.path.padEnd(44)} ${String(f.lines).padStart(4)} 行  ${size}`);
+    const size = f.tokens ? `约 ${f.tokens} token` : '';
+    console.log(`  ${GROUP[f.group].padEnd(8)} ${f.path.padEnd(40)} ${String(f.lines).padStart(4)} 行  ${size}`);
   }
-  const diags = [...project.loadDiagnostics, ...result.diagnostics];
-  if (diags.length) {
-    console.log('\n诊断：');
-    for (const d of diags) {
-      const where = d.card ?? d.file;
-      console.log(`  ${ICON[d.severity]} ${d.message}${where ? `  (${where})` : ''}`);
-    }
+  if (result.diagnostics.length) {
+    console.log('\n问题：');
+    for (const d of result.diagnostics) console.log(`  ${ICON[d.severity]} ${d.message}`);
   }
-  if (diags.some((d) => d.severity === 'error')) process.exitCode = 1;
+  if (result.diagnostics.some((d) => d.severity === 'error')) process.exitCode = 1;
 }
 
 main().catch((e) => {

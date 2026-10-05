@@ -11,31 +11,24 @@ const RANK: Record<Severity, number> = { error: 0, warning: 1 };
 
 interface Props {
   diagnostics: Diagnostic[];
-  onOpenCard: (path: string) => void;
-  onOpenFile: (file: string) => void;
+  /** 去问题所在的位置 */
+  onOpen: (target: string) => void;
 }
 
-export default function DiagnosticList({ diagnostics, onOpenCard, onOpenFile }: Props) {
-  if (!diagnostics.length) return <Empty description="无" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+export default function DiagnosticList({ diagnostics, onOpen }: Props) {
+  if (!diagnostics.length) return <Empty description="没有发现问题" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   const sorted = [...diagnostics].sort((a, b) => RANK[a.severity] - RANK[b.severity]);
   return (
-    <Flex vertical gap={8}>
+    <Flex vertical gap={12}>
       {sorted.map((d, i) => (
         <Flex key={i} gap={8} align="baseline">
           {ICON[d.severity]}
           <div>
             <Typography.Text>{d.message}</Typography.Text>
-            {d.card && (
+            {d.target && (
               <div>
-                <Typography.Link onClick={() => onOpenCard(d.card!)} style={{ fontSize: 12 }}>
-                  {d.card}
-                </Typography.Link>
-              </div>
-            )}
-            {!d.card && d.file && (
-              <div>
-                <Typography.Link onClick={() => onOpenFile(d.file!)} style={{ fontSize: 12 }}>
-                  build/{d.file}
+                <Typography.Link onClick={() => onOpen(d.target!)} style={{ fontSize: 12 }}>
+                  去看看
                 </Typography.Link>
               </div>
             )}

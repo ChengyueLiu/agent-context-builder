@@ -1,0 +1,47 @@
+# 记忆管理：agent 脑子里记着的关键信息，每样几句话。
+
+items:
+  - id: project
+    name: 项目概况
+    scope: project
+    path: memory/project.md
+    format: 研究问题、目标会议、要证明的论断、限制、截止时间、已排除的方向；一两句大致规划；用户拍过的板，附原因。
+    when: 项目开始时起草，用户确认后生效；用户拍板之后。
+    write: 研究问题、目标会议、论断和用户拍的板，改动要用户同意
+    load: auto
+    limit: 一页以内
+  - id: progress
+    name: 进展
+    scope: project
+    path: memory/progress.md
+    format: 当前在做什么、之前发生了什么（比如哪个实验失败了、用户否掉了什么）、接下来打算做什么，几句话。
+    when: 一步结束、用户拍板、实验出了意外结果之后。
+    write: 可以改写
+    load: auto
+    limit: 10 行以内
+  - id: reference
+    name: 参考
+    scope: project
+    path: memory/reference.md
+    format: 工作中得知的外部信息去哪找，每条一行：是什么、在哪。比如用户提到的数据集、代码仓库、服务器。
+    when: 用户告诉你、或者自己找到一个以后还会用的信息来源时。
+    write: 可以改写
+    load: on_demand
+  - id: user
+    name: 用户
+    scope: cross
+    path: ~/memory/user.md
+    format: 用户的研究方向、熟悉的方法、喜欢怎么做。
+    when: 了解到用户的新情况时。
+    write: 可以改写
+    load: auto
+    limit: 20 行以内
+  - id: feedback
+    name: 反馈
+    scope: cross
+    path: ~/memory/feedback.md
+    format: 用户纠正过、确认过的做法，每条一行，附原因。
+    when: 用户纠正你，或者确认了某种不明显的做法时。
+    write: 可以改写
+    load: auto
+    limit: 30 行以内

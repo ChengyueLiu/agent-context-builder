@@ -1,0 +1,65 @@
+# 工具：它能执行的操作。说明会写进工具定义。
+
+items:
+  - id: literature_search
+    name: 文献检索
+    source: own
+    purpose: 检索学术文献，返回元数据和摘要。
+    when: 调研相关工作、核对引用出处的时候。
+    io: |-
+      参数：
+      - `query`：检索词，用英文效果更好。
+      - `years`：年份范围，如 `2023-2026`。
+      - `limit`：返回条数，默认 20。
+
+      返回：每篇的标题、作者、年份、会议、摘要、链接。
+
+      示例：`{"query": "long-context transformer stability", "years": "2023-2026", "limit": 20}`
+    limits: 最多返回 50 条；摘要超过 500 字时截断。
+    usage: 检索后先把结果存档，再引用。引用只能来自存档的检索结果。
+    effect: read
+  - id: run_experiment
+    name: 实验运行
+    source: own
+    purpose: 在沙箱中运行一次实验。
+    when: 快速验证和实验执行这两步。
+    io: |-
+      参数：
+      - `config`：实验配置文件的路径。
+      - `seed`：随机种子。
+
+      返回：运行 id、状态、结果文件和日志的位置。
+
+      示例：`{"config": "configs/ablation-1.yaml", "seed": 42}`
+    limits: 日志只返回最后 200 行，完整日志在返回的日志位置。
+    usage: |-
+      1. 跑实验前，先把配置登记到实验记录：代码版本、超参、数据、随机种子。
+      2. 跑完把结果和日志位置追加到实验记录，不改已有的记录。
+    errors: 失败时先记录失败原因，再决定是否重试。
+    effect: local
+  - id: update_plan
+    name: 规划与待办
+    source: own
+    purpose: 查看和更新这个项目的规划与待办。
+    when: 开始做一项、做完一项、卡住、要加待办的时候。
+    io: |-
+      参数：
+      - `action`：`list` 查看，`add` 加一项，`update` 改一项。
+      - `step`：属于七步里的哪一步。
+      - `item`：加的时候写待办的内容，改的时候写编号。
+      - `status`：待做、在做、做完、放弃、受阻。
+      - `note`：放弃的原因，或者受阻时在等什么。
+
+      返回：更新后的规划和当前这一步的待办。
+    effect: local
+  - id: ask_user
+    name: 提问
+    source: own
+    purpose: 向用户提一组问题并等待回答。
+    when: 遇到必须用户拍板的事，或者会影响论断和方案的不确定处。
+    io: |-
+      参数：
+      - `questions`：问题列表，每个问题附 2 到 4 个选项，推荐的选项放第一个。
+
+      返回：用户的选择，或用户自己写的回答。
+    effect: read

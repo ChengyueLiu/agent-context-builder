@@ -2,7 +2,7 @@
   "name": "agent-context-builder",
   "version": "0.1.0",
   "private": true,
-  "description": "按意义编辑 agent 的上下文，编译成按加载方式组织的文件",
+  "description": "按预置的大纲填写 agent 的定义，合成 agent 拿到的文件",
   "type": "module",
   "scripts": {
     "dev": "tsx src/server/index.ts",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
+    "@ant-design/pro-components": "^3.1.15-5",
     "@uiw/react-md-editor": "^4.1.2",
     "antd": "^6.6.5",
     "express": "^5.2.1",

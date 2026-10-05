@@ -1,0 +1,105 @@
+# 产出物管理：agent 产出的文件。
+
+items:
+  - id: paper
+    name: 论文初稿
+    kind: final
+    skill: writing
+    path: outputs/paper/
+    when: 论文写作这一步。
+    format: 论文正文、图表和参考文献。
+    write: versioned
+    confirm: true
+  - id: claims
+    name: 论断清单
+    kind: final
+    path: outputs/claims.md
+    when: 实验设计时列出；结果分析后更新每条的状态。
+    format: 每条论断标明已支撑或撑不住，附证据位置。
+    write: edit
+  - id: experiments
+    name: 实验记录
+    kind: final
+    path: records/experiments.jsonl
+    when: 跑实验前登记配置，跑完追加结果。
+    format: 每行一次实验：代码版本、超参、数据、随机种子、结果、日志位置。照着能复现。
+    write: append
+  - id: final_report
+    name: 最终报告
+    kind: final
+    path: outputs/final-report.md
+    when: 项目结束时。
+    format: 做了什么、结论、局限、下一步建议。
+    write: versioned
+  - id: related_work
+    name: 相关工作表
+    kind: interim
+    skill: survey
+    path: outputs/survey/related-work.md
+    when: 调研定位这一步。
+    format: 相关工作的方法、数据、结论、局限，以及几个候选研究问题。
+    write: versioned
+    confirm: true
+  - id: proposal
+    name: 研究提案
+    kind: interim
+    skill: idea
+    path: outputs/idea/proposal.md
+    when: 核心想法这一步。
+    format: 问题、假设、新在哪、怎么验证、风险。
+    write: versioned
+  - id: derisk_report
+    name: 验证报告
+    kind: interim
+    skill: derisk
+    path: outputs/derisk/report.md
+    when: 快速验证这一步。
+    format: 快速实验的结果，以及继续还是放弃。
+    write: versioned
+  - id: design
+    name: 实验方案
+    kind: interim
+    skill: experiment-design
+    path: outputs/design/plan.md
+    when: 实验设计这一步。
+    format: 每条论断对应的实验，跑之前定好什么结果算支撑。
+    write: versioned
+    confirm: true
+  - id: analysis
+    name: 分析报告
+    kind: interim
+    skill: analysis
+    path: outputs/analysis/report.md
+    when: 结果分析这一步。
+    format: 逐条论断：撑不撑得住，证据是什么。
+    write: versioned
+  - id: references
+    name: 参考文献库
+    kind: interim
+    path: outputs/paper/refs.bib
+    when: 每次引用一篇文献时。
+    format: 只收检索到、核实过的引用。
+    write: append
+  - id: lesson_proposals
+    name: 经验提议
+    kind: interim
+    skill: review
+    path: outputs/lesson-proposals/
+    when: 每次复盘之后。
+    format: 每条一个文件：规则、为什么、怎么用，注明来自哪个项目、哪次实验。成功和失败都记。
+    write: edit
+    confirm: true
+  - id: attempts
+    name: 尝试与失败
+    kind: record
+    path: records/attempts.md
+    when: 一个做法试过没成的时候。
+    format: 试过什么、为什么没成，结果引用实验记录里的编号。
+    write: append
+  - id: searches
+    name: 检索存档
+    kind: record
+    path: records/searches/
+    when: 每次检索文献之后。
+    format: 检索词和返回的结果。引用只能来自这里。
+    write: append

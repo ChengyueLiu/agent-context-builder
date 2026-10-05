@@ -5,3 +5,6 @@ dist/
 
 # 论文 PDF 体积大（约 160MB），不进仓库；编号都记在 reference/notes 里，可重新下载
 reference/papers/
+
+# 下载的 Anthropic 文章和文档（约 300MB），不进仓库；读书笔记在 reference/notes 里，原文可重新下载
+docs/anthropic/

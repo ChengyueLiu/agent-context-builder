@@ -1,7 +1,7 @@
-import type { AgentSummary } from '../core/project';
-import type { AgentSpec, BuildResult, Card, CardInput, ProjectData } from '../core/types';
+import type { AgentSummary } from '../core/store';
+import type { BuildResult, DefPatch, ProjectData } from '../core/types';
 
-/** 服务端每次返回的完整状态：项目内容 + 最新的编译结果。 */
+/** 服务端每次返回的完整状态：定义 + 最新的生成结果。 */
 export type ProjectPayload = ProjectData & { build: BuildResult; buildError?: string };
 
 export type { AgentSummary };
@@ -27,11 +27,8 @@ export function agentApi(id: string) {
   const base = `/api/agents/${encodeURIComponent(id)}`;
   return {
     project: () => call<ProjectPayload>('GET', `${base}/project`),
-    saveAgent: (agent: AgentSpec) => call<ProjectPayload>('PUT', `${base}/agent`, agent),
-    createCard: (input: CardInput) => call<{ card: Card; project: ProjectPayload }>('POST', `${base}/card`, input),
-    saveCard: (card: Card) => call<{ card: Card; project: ProjectPayload }>('PUT', `${base}/card`, card),
-    deleteCard: (path: string) => call<ProjectPayload>('DELETE', `${base}/card?path=${encodeURIComponent(path)}`),
-    rebuild: () => call<ProjectPayload>('POST', `${base}/build`),
+    /** 改一部分：名称和系统提示词按格子合并，清单整份替换 */
+    patch: (patch: DefPatch) => call<ProjectPayload>('PUT', `${base}/def`, patch),
   };
 }
 

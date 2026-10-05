@@ -4,18 +4,14 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Editor from './Editor';
 import ProjectList from './components/ProjectList';
+import { agentInHash } from './util';
 import './styles.css';
 
 /** 网址 #/<agent> 打开某个 agent，没有就显示 agent 列表。 */
-function currentAgent(): string | undefined {
-  const m = location.hash.match(/^#\/(.+)$/);
-  return m ? decodeURIComponent(m[1]) : undefined;
-}
-
 function Root() {
-  const [agent, setAgent] = useState(currentAgent);
+  const [agent, setAgent] = useState(agentInHash);
   useEffect(() => {
-    const onHash = () => setAgent(currentAgent());
+    const onHash = () => setAgent(agentInHash());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);

@@ -1,223 +1,198 @@
-import { ArrowLeftOutlined, QuestionCircleOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, App as AntApp, Badge, Button, Drawer, Empty, Result, Segmented, Spin, Tag, Tooltip, Typography } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Card } from '../core/types';
-import { AgentApiContext } from './agentContext';
+import { ArrowLeftOutlined, FileTextOutlined, QuestionCircleOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons';
+import { ProLayout } from '@ant-design/pro-components';
+import { Alert, App, Badge, Button, Drawer, Result, Spin, Tooltip } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { DefPatch } from '../core/types';
+import { EditorContext, type PageState } from './agentContext';
 import { agentApi, type ProjectPayload } from './api';
-import CardEditor from './components/CardEditor';
 import DiagnosticList from './components/DiagnosticList';
 import Help from './components/Help';
-import { EntryPanel, GroupPanel, Overview, PiecePanel } from './components/Panels';
-import PreviewView from './components/PreviewView';
-import Sidebar from './components/Sidebar';
-import SkeletonEditor from './components/SkeletonEditor';
-import { allDiagnostics, type Selection, type View } from './util';
+import ItemPage from './components/ItemPage';
+import OutlineTree from './components/OutlineTree';
+import PartPage from './components/PartPage';
+import PromptPane from './components/PromptPane';
+import SectionPage from './components/SectionPage';
+import { canonical, firstRoute, hashOf, parseRouteKey, routeInHash, routeKey, sectionOf, type Route } from './util';
 
 interface Props {
   agentId: string;
   onBack: () => void;
 }
 
-/** 编辑一个 agent：编辑、骨架、预览三个视图。 */
+/** 打开一个 agent 之后的界面：左边目录，中间配置，右边是由配置合成的系统提示词。 */
 export default function Editor({ agentId, onBack }: Props) {
-  const { message, modal } = AntApp.useApp();
+  const { message, modal } = App.useApp();
   const api = useMemo(() => agentApi(agentId), [agentId]);
-  const [project, setProject] = useState<ProjectPayload | null>(null);
-  const [loadError, setLoadError] = useState<string>();
-  const [view, setView] = useState<View>('edit');
-  const [selection, setSelection] = useState<Selection>({ type: 'overview' });
-  const [previewFile, setPreviewFile] = useState('system-prompt.md');
-  const [cardDirty, setCardDirty] = useState(false);
-  const [skeletonDirty, setSkeletonDirty] = useState(false);
-  const [skeletonKey, setSkeletonKey] = useState(0);
-  const [diagOpen, setDiagOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [project, setProject] = useState<ProjectPayload>();
+  const [error, setError] = useState<string>();
+  const [wanted, setWanted] = useState<Route | undefined>(routeInHash);
+  const [live, setLive] = useState<DefPatch>();
+  const [showPrompt, setShowPrompt] = useState(true);
+  const [showProblems, setShowProblems] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const page = useRef<PageState>({ dirty: false });
 
   useEffect(() => {
-    api.project().then(setProject, (e: Error) => setLoadError(e.message));
+    api.project().then(setProject, (e: Error) => setError(e.message));
   }, [api]);
 
-  // 有未保存的修改时，关闭页面前提醒
+  const template = project?.template;
+  const route = template ? canonical(template, wanted ?? firstRoute(template)) : undefined;
+  const key = route ? routeKey(route) : '';
+
+  // 网址跟着当前位置走，刷新网页后还在原处；手动改了网址，位置也跟着走
   useEffect(() => {
-    if (!cardDirty && !skeletonDirty) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [cardDirty, skeletonDirty]);
-
-  /** 离开当前编辑之前，确认是否丢掉未保存的修改 */
-  const guard = (go: () => void, includeSkeleton = false) => {
-    if (!cardDirty && !(includeSkeleton && skeletonDirty)) return go();
-    modal.confirm({
-      title: '有未保存的修改',
-      content: '离开会丢掉这些修改。',
-      okText: '丢掉修改',
-      okButtonProps: { danger: true },
-      cancelText: '留下',
-      onOk: () => {
-        setCardDirty(false);
-        setSkeletonDirty(false);
-        go();
-      },
-    });
-  };
-
-  const select = (s: Selection) =>
-    guard(() => {
-      setSelection(s);
-      setView('edit');
-    });
-  const openCard = (path: string) => select({ type: 'card', path });
-  // 切到预览不卸载编辑器，草稿还在，所以不用确认
-  const openFile = (file: string) => {
-    setPreviewFile(file);
-    setView('preview');
-  };
-
-  const reload = () =>
-    guard(async () => {
-      try {
-        setProject(await api.rebuild());
-        setSkeletonKey((k) => k + 1);
-        message.success('已从磁盘重新读取');
-      } catch (e) {
-        message.error((e as Error).message);
-      }
-    }, true);
-
-  const onCardSaved = useCallback((card: Card, p: ProjectPayload) => {
-    setProject(p);
-    setSelection({ type: 'card', path: card.path });
+    if (route) history.replaceState(null, '', hashOf(agentId, route));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, key]);
+  useEffect(() => {
+    const onHash = () => setWanted(routeInHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  if (loadError)
-    return (
-      <Result
-        status="error"
-        title="打不开这个 agent"
-        subTitle={loadError}
-        extra={
-          <Button type="primary" onClick={onBack}>
-            回到列表
-          </Button>
-        }
-      />
-    );
-  if (!project) return <Spin size="large" style={{ display: 'block', marginTop: 120 }} />;
+  // 换页后回到顶部
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [key]);
 
-  const diags = allDiagnostics(project);
-  const selectedCard = selection.type === 'card' ? project.cards.find((c) => c.path === selection.path) : undefined;
-  const common = { project, onSelect: select, onOpenFile: openFile, onCreated: onCardSaved };
+  const setPage = useCallback((state: PageState) => {
+    page.current = state;
+  }, []);
 
-  let main: React.ReactNode;
-  switch (selection.type) {
-    case 'overview':
-      main = <Overview {...common} />;
-      break;
-    case 'piece':
-      main = <PiecePanel {...common} id={selection.id} />;
-      break;
-    case 'entry':
-      main = <EntryPanel {...common} id={selection.id} />;
-      break;
-    case 'group':
-      main = <GroupPanel {...common} when={selection.when} />;
-      break;
-    case 'card':
-      main = selectedCard ? (
-        <CardEditor
-          key={selectedCard.path}
-          project={project}
-          card={selectedCard}
-          onSaved={onCardSaved}
-          onDeleted={(p) => {
-            setProject(p);
-            setCardDirty(false);
-            setSelection({ type: 'entry', id: selectedCard.entry });
-          }}
-          onDirtyChange={setCardDirty}
-          onOpenFile={openFile}
-          onSelect={select}
-        />
-      ) : (
-        <Empty style={{ marginTop: 80 }} description={`找不到这张卡片：${selection.path}`} />
-      );
-      break;
-  }
+  /** 当前页有没保存的修改时，先问要不要保存，再做后面的事 */
+  const guard = useCallback(
+    (then: () => void) => {
+      const { dirty, save } = page.current;
+      if (!dirty) return then();
+      const asked = modal.confirm({
+        title: '这一页有没保存的修改',
+        content: '离开之前要保存吗？',
+        okText: '保存',
+        cancelText: '留在这一页',
+        onOk: async () => {
+          if (await save?.()) then();
+        },
+        footer: (_, { OkBtn, CancelBtn }) => (
+          <>
+            <Button
+              danger
+              onClick={() => {
+                asked.destroy();
+                page.current = { dirty: false };
+                then();
+              }}
+            >
+              不保存
+            </Button>
+            <CancelBtn />
+            <OkBtn />
+          </>
+        ),
+      });
+    },
+    [modal],
+  );
+
+  const jump = useCallback((next: Route) => setWanted(next), []);
+  const go = useCallback(
+    (next: Route) => {
+      if (template && routeKey(canonical(template, next)) === key) return;
+      guard(() => setWanted(next));
+    },
+    [template, key, guard],
+  );
+
+  const reload = async () => {
+    setReloading(true);
+    try {
+      setProject(await api.project());
+      message.success('已从磁盘重新读取');
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setReloading(false);
+    }
+  };
+
+  const context = useMemo(() => (project ? { api, project, setProject, go, jump, setPage, setLive } : null), [api, project, go, jump, setPage]);
+
+  if (error) return <Result status="error" title="打不开这个 agent" subTitle={error} extra={<Button onClick={onBack}>回到列表</Button>} />;
+  if (!project || !context || !route || !template) return <Spin size="large" style={{ display: 'block', marginTop: 120 }} />;
+
+  const { def, build } = project;
+  const errors = build.diagnostics.filter((d) => d.severity === 'error').length;
+  const section = route.type === 'section' ? template.prompt.sections.find((s) => s.id === route.id) : undefined;
+  const part = route.type === 'part' ? template.parts.find((p) => p.id === route.id) : undefined;
+
+  const actions = [
+    <Tooltip key="prompt" title={showPrompt ? '收起系统提示词' : '显示系统提示词'}>
+      <Button type={showPrompt ? 'default' : 'text'} icon={<FileTextOutlined />} onClick={() => setShowPrompt((x) => !x)}>
+        系统提示词
+      </Button>
+    </Tooltip>,
+    <Badge key="problems" count={build.diagnostics.length} size="small" color={errors ? undefined : '#faad14'} offset={[-4, 4]}>
+      <Button type="text" icon={<WarningOutlined />} onClick={() => setShowProblems(true)}>
+        问题
+      </Button>
+    </Badge>,
+    <Tooltip key="reload" title="直接改了磁盘上的文件之后，点这里重新读取">
+      <Button type="text" icon={<ReloadOutlined />} loading={reloading} onClick={reload}>
+        重新读取
+      </Button>
+    </Tooltip>,
+    <Button key="help" type="text" icon={<QuestionCircleOutlined />} onClick={() => setShowHelp(true)}>
+      帮助
+    </Button>,
+  ];
 
   return (
-    <AgentApiContext.Provider value={api}>
-      <div className="app">
-        <header className="app-header">
-          <Tooltip title="全部 agent">
-            <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => guard(onBack, true)} />
-          </Tooltip>
-          <span className="app-title" onClick={() => select({ type: 'overview' })}>
-            {project.agent.name}
-          </span>
-          <Segmented
-            value={view}
-            onChange={(v) => setView(v as View)}
-            options={[
-              { label: '编辑', value: 'edit' },
-              { label: skeletonDirty ? '骨架 •' : '骨架', value: 'skeleton' },
-              { label: '预览', value: 'preview' },
-            ]}
-          />
-          <div style={{ flex: 1 }} />
-          {cardDirty && <Tag color="orange">卡片未保存</Tag>}
-          {diags.length > 0 && (
-            <Button onClick={() => setDiagOpen(true)}>
-              <Badge count={diags.length} size="small" offset={[6, -2]}>
-                问题
-              </Badge>
-            </Button>
+    <EditorContext.Provider value={context}>
+      <ProLayout
+        layout="mix"
+        title={def.config.name || agentId}
+        logo={<ArrowLeftOutlined />}
+        onMenuHeaderClick={() => guard(onBack)}
+        fixedHeader
+        fixSiderbar
+        siderWidth={260}
+        collapsed={false}
+        collapsedButtonRender={false}
+        disableMobile
+        pageTitleRender={false}
+        footerRender={false}
+        contentStyle={{ padding: 0 }}
+        token={{ header: { colorBgHeader: '#fff' } }}
+        actionsRender={() => actions}
+        menuContentRender={() => <OutlineTree route={route} />}
+      >
+        <div className="workspace">
+          <div className="workspace-main">
+            {project.buildError && <Alert type="error" showIcon title="生成的文件没有写到磁盘" description={project.buildError} style={{ margin: 16 }} />}
+            {route.type === 'section' && (section ? <SectionPage key={section.id} section={section} /> : <Result status="warning" title="没有这一页" />)}
+            {route.type === 'part' && (part ? <PartPage key={part.id} part={part} /> : <Result status="warning" title="没有这一页" />)}
+            {route.type === 'item' && <ItemPage key={key} kind={route.kind} id={route.id} />}
+          </div>
+          {showPrompt && (
+            <aside className="workspace-prompt">
+              <PromptPane focus={sectionOf(template, route, def)} live={live} onClose={() => setShowPrompt(false)} />
+            </aside>
           )}
-          <Tooltip title="在别处改了文件后，从磁盘重新读取">
-            <Button icon={<ReloadOutlined />} onClick={reload} />
-          </Tooltip>
-          <Tooltip title="帮助">
-            <Button icon={<QuestionCircleOutlined />} onClick={() => setHelpOpen(true)} />
-          </Tooltip>
-        </header>
-
-        {project.buildError && <Alert banner type="error" title={`没有写入 build/：${project.buildError}`} />}
-
-        <div className="app-body" style={{ display: view === 'edit' ? 'flex' : 'none' }}>
-          <aside className="app-sider">
-            <Sidebar project={project} selection={selection} onSelect={select} />
-          </aside>
-          <main className={selection.type === 'card' ? 'app-main app-main-fill' : 'app-main'}>{main}</main>
         </div>
-        <div className="app-body" style={{ display: view === 'skeleton' ? 'flex' : 'none' }}>
-          <main className="app-main">
-            <SkeletonEditor key={skeletonKey} project={project} onSaved={setProject} onDirtyChange={setSkeletonDirty} />
-          </main>
-        </div>
-        <div className="app-body" style={{ display: view === 'preview' ? 'flex' : 'none' }}>
-          <main className="app-main app-main-fill">
-            <PreviewView project={project} file={previewFile} onFileChange={setPreviewFile} onOpenCard={openCard} />
-          </main>
-        </div>
+      </ProLayout>
 
-        <Drawer title="问题" open={diagOpen} onClose={() => setDiagOpen(false)} size={480}>
-          <DiagnosticList
-            diagnostics={diags}
-            onOpenCard={(p) => {
-              setDiagOpen(false);
-              openCard(p);
-            }}
-            onOpenFile={(f) => {
-              setDiagOpen(false);
-              openFile(f);
-            }}
-          />
-        </Drawer>
-        <Drawer title="帮助" open={helpOpen} onClose={() => setHelpOpen(false)} size={520}>
-          <Help />
-        </Drawer>
-        <Typography.Text style={{ display: 'none' }}>{project.root}</Typography.Text>
-      </div>
-    </AgentApiContext.Provider>
+      <Drawer title="问题" open={showProblems} onClose={() => setShowProblems(false)} size={480}>
+        <DiagnosticList
+          diagnostics={build.diagnostics}
+          onOpen={(target) => {
+            const next = parseRouteKey(target);
+            setShowProblems(false);
+            if (next) go(next);
+          }}
+        />
+      </Drawer>
+      <Help open={showHelp} onClose={() => setShowHelp(false)} />
+    </EditorContext.Provider>
   );
 }

@@ -1,0 +1,39 @@
+# 运行信息：系统在运行时提供给 agent 的信息。
+
+items:
+  - id: time_location
+    name: 时间与位置
+    belongs: environment
+    where: per_message
+    explain: 当前日期、时间和时区。判断截止时间、写日期时用它，不要自己猜。
+    sample: 2026-10-05 21:30（Asia/Shanghai）
+  - id: env_snapshot
+    name: 环境快照
+    belongs: environment
+    where: session_start
+    explain: 这次开工时会变的情况：GPU 空闲多少、代码版本。计划实验规模、写实验记录时用它。
+    sample: GPU 空闲 2 / 2；代码版本 a1b2c3d
+  - id: mode
+    name: 模式
+    belongs: collab
+    where: per_message
+    explain: 当前是自主推进还是逐步确认。逐步确认时，每做完一步先等用户回复。
+    sample: 自主推进
+  - id: current_task
+    name: 当前任务
+    belongs: process
+    where: per_message
+    explain: 规划里正在做的那一步和那条待办。手上的事和它对不上时，先停下来想想是不是偏了。
+    sample: 实验执行 › 重跑第二组消融实验
+  - id: plan_overview
+    name: 规划全貌
+    belongs: process
+    where: session_start
+    explain: 七步各自的状态，以及当前这一步的待办。以它为准，不要凭印象。
+    sample: 调研定位 做完；核心想法 做完；快速验证 做完；实验设计 做完；实验执行 在做（待办 3/5）；结果分析 待做；论文写作 待做
+  - id: budget
+    name: 预算用量
+    belongs: guarantees
+    where: per_message
+    explain: 已用和剩下的 token、算力和时间。快用完时先保存状态，再向用户汇报。
+    sample: token 已用 120k / 500k；算力已用 3.2 / 10 GPU 小时；已用 2 天 / 7 天

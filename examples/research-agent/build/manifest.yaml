@@ -1,150 +1,257 @@
 agent: 自动化科研 Agent
 description: 辅助科研人员完成研究，从调研定位到论文初稿，目标是有丰富发表经验的博士后水平。
-note: 本目录由 agent-context-builder 编译生成，不要手改。改 context/ 里的卡片后重新编译。
-system_prompt:
-  file: system-prompt.md
-  load: always
-  tokens: 2264
-skills:
-  - name: stage-survey
-    kind: stage
-    title: 调研定位
-    description: 进入调研定位阶段时加载：检索相关工作，整理相关工作表，提出候选研究问题。
-    file: skills/stage-survey/SKILL.md
-    load: on_trigger
-  - name: stage-experiment-design
-    kind: stage
-    title: 实验设计
-    description: 进入实验设计阶段时加载：把论断清单变成实验方案，跑之前定下支撑与不支撑的标准。
-    file: skills/stage-experiment-design/SKILL.md
-    attachments:
-      - skills/stage-experiment-design/examples.md
-    load: on_trigger
-  - name: stage-writing
-    kind: stage
-    title: 论文写作
-    description: 进入论文写作阶段时加载：把论断和证据写成论文初稿。
-    file: skills/stage-writing/SKILL.md
-    load: on_trigger
-  - name: domain-ml
-    kind: domain
-    title: 机器学习
-    description: 研究属于机器学习领域时加载：常用基准与指标、主要会议、什么算贡献、领域内容易犯的错误。
-    file: skills/domain-ml/SKILL.md
-    load: on_trigger
-tools:
-  - id: literature_search
-    name: 文献检索
-    file: tools/literature_search.md
-    load: with_tool
-  - id: run_experiment
-    name: 实验运行
-    file: tools/run_experiment.md
-    load: with_tool
-  - id: ask_user
-    name: 提问
-    file: tools/ask_user.md
-    load: with_tool
-reminders:
-  - id: todo_stale
-    name: 待办久未更新
-    trigger: 待办清单连续 10 轮没有更新时触发。
-    file: reminders/todo_stale.md
-    load: on_situation
-  - id: context_full
-    name: 上下文将满
-    trigger: 上下文占用超过 80% 时触发。
-    file: reminders/context_full.md
-    load: on_situation
-  - id: budget_low
-    name: 预算将尽
-    trigger: 已用预算超过 80% 时触发。
-    file: reminders/budget_low.md
-    load: on_situation
-files:
-  index:
-    file: files/INDEX.md
-    load: always
-  items:
-    - file: files/科研写作指南.md
-      title: 科研写作指南
-      load: on_demand
-mechanisms: mechanisms.md
-sources:
-  system-prompt.md:
-    - context/1-job/role.md
-    - context/1-job/served.md
-    - context/1-job/scope.md
-    - context/1-job/done.md
-    - context/1-job/quality.md
-    - context/1-job/output_format.md
-    - context/1-job/priority.md
-    - context/2-hard_rules/hr_world.md
-    - context/2-hard_rules/hr_assets.md
-    - context/2-hard_rules/hr_instructions.md
-    - context/2-hard_rules/hr_truth.md
-    - context/2-hard_rules/hr_resources.md
-    - context/2-hard_rules/hr_obligations.md
-    - context/3-practice/flow_map.md
-    - context/3-practice/verification.md
-    - context/3-practice/rollback.md
-    - context/3-practice/conventions.md
-    - context/4-collaboration/intake.md
-    - context/4-collaboration/decision_points.md
-    - context/4-collaboration/reporting.md
-    - context/4-collaboration/stopping.md
-    - context/4-collaboration/handoff.md
-    - context/4-collaboration/autonomy.md
-    - context/5-self_management/planning.md
-    - context/5-self_management/execution.md
-    - context/5-self_management/self_check.md
-    - context/5-self_management/budget_context.md
-    - context/5-self_management/memory_usage.md
-    - context/5-self_management/skill_file_usage.md
-    - context/5-self_management/finishing.md
-    - context/6-tools_resources/subagent_catalog.md
-    - context/6-tools_resources/permissions.md
-    - context/7-env_domain/harness.md
-    - context/7-env_domain/glossary.md
-  skills/stage-survey/SKILL.md:
-    - context/3-practice/stage_practice.stage-survey.md
-  skills/stage-experiment-design/examples.md:
-    - context/3-practice/examples.stage-experiment-design.md
-  skills/stage-experiment-design/SKILL.md:
-    - context/1-job/quality.stage-experiment-design.md
-    - context/3-practice/stage_practice.stage-experiment-design.md
-    - context/3-practice/preventive.stage-experiment-design.md
-  skills/stage-writing/SKILL.md:
-    - context/1-job/quality.stage-writing.md
-    - context/3-practice/stage_practice.stage-writing.md
-  skills/domain-ml/SKILL.md:
-    - context/3-practice/preventive.domain-ml.md
-    - context/7-env_domain/domain_knowledge.domain-ml.md
-  tools/literature_search.md:
-    - context/6-tools_resources/tool_definition.tool-literature_search.md
-    - context/6-tools_resources/output_limits.tool-literature_search.md
-    - context/3-practice/tool_procedure.tool-literature_search.md
-  tools/run_experiment.md:
-    - context/6-tools_resources/tool_definition.tool-run_experiment.md
-    - context/6-tools_resources/output_limits.tool-run_experiment.md
-    - context/3-practice/tool_procedure.tool-run_experiment.md
-  tools/ask_user.md:
-    - context/6-tools_resources/tool_definition.tool-ask_user.md
-    - context/4-collaboration/asking.tool-ask_user.md
-  reminders/todo_stale.md:
-    - context/5-self_management/nudges.situation-todo_stale.md
-  reminders/context_full.md:
-    - context/5-self_management/nudges.situation-context_full.md
-  reminders/budget_low.md:
-    - context/5-self_management/nudges.situation-budget_low.md
-  files/科研写作指南.md:
-    - context/7-env_domain/references.on-demand.md
-  files/INDEX.md:
-    - context/7-env_domain/references.on-demand.md
-  mechanisms.md:
-    - context/2-hard_rules/hr_world.md
-    - context/2-hard_rules/hr_assets.md
-    - context/2-hard_rules/hr_instructions.md
-    - context/2-hard_rules/hr_truth.md
-    - context/2-hard_rules/hr_resources.md
-    - context/2-hard_rules/hr_obligations.md
+note: 本目录由 agent-context-builder 生成，不要手改。在编写页里改，保存后会重新生成。
+given_at_start:
+  system_prompt: system-prompt.md
+  tools: tools.json
+loaded_on_demand:
+  skills:
+    - id: survey
+      name: 调研定位
+      description: 进入调研定位这一步时：检索相关工作，整理相关工作表，提出候选研究问题。
+      file: skills/survey/SKILL.md
+    - id: experiment-design
+      name: 实验设计
+      description: 进入实验设计这一步时：把论断清单变成实验方案，跑之前定下支撑与不支撑的标准。
+      file: skills/experiment-design/SKILL.md
+    - id: experiment
+      name: 实验执行
+      description: 进入实验执行这一步时：按方案运行实验并记录。
+      file: skills/experiment/SKILL.md
+    - id: analysis
+      name: 结果分析
+      description: 进入结果分析这一步时：逐条判断论断是否得到支撑，写分析报告。
+      file: skills/analysis/SKILL.md
+    - id: writing
+      name: 论文写作
+      description: 进入论文写作这一步时：把论断和证据写成论文初稿。
+      file: skills/writing/SKILL.md
+      reference: skills/writing/reference.md
+    - id: review
+      name: 复盘
+      description: 每个阶段结束时、实验失败后、项目结束时。
+      file: skills/review/SKILL.md
+  knowledge:
+    - id: lessons
+      name: 经验
+      when: 遇到相似处境，或者要做自己常出错的那类事时。经验只作参考，不当规则；和当前情况不符时，以当前情况为准。属于常出错的那类事，就放慢、多验证，或者先问用户。
+      location: lessons/（用户批准过的经验，每条一个文件）
+    - id: glossary
+      name: 术语表
+      when: 遇到不确定的术语时。
+      file: knowledge/glossary.md
+    - id: ml
+      name: 机器学习
+      when: 研究属于机器学习领域时：常用基准与指标、主要会议、什么算贡献、领域内容易犯的错误。
+      file: knowledge/ml.md
+injected_on_timing:
+  reminders:
+    - id: step_review
+      name: 一步结束
+      trigger: 一步结束、进入下一步之前。
+      file: reminders/step_review.md
+    - id: plan_stale
+      name: 规划久未更新
+      trigger: 规划和待办连续 10 轮没有更新时触发。
+      file: reminders/plan_stale.md
+    - id: context_full
+      name: 上下文将满
+      trigger: 上下文占用超过 80% 时触发。
+      file: reminders/context_full.md
+    - id: budget_low
+      name: 预算将尽
+      trigger: 已用预算超过 80% 时触发。
+      file: reminders/budget_low.md
+    - id: memory_long
+      name: 记忆超长
+      trigger: 某样记忆快超过它的长度上限时触发。
+      file: reminders/memory_long.md
+memory:
+  - id: project
+    name: 项目概况
+    scope: project
+    path: memory/project.md
+    format: 研究问题、目标会议、要证明的论断、限制、截止时间、已排除的方向；一两句大致规划；用户拍过的板，附原因。
+    when: 项目开始时起草，用户确认后生效；用户拍板之后。
+    write: 研究问题、目标会议、论断和用户拍的板，改动要用户同意
+    load: auto
+    limit: 一页以内
+  - id: progress
+    name: 进展
+    scope: project
+    path: memory/progress.md
+    format: 当前在做什么、之前发生了什么（比如哪个实验失败了、用户否掉了什么）、接下来打算做什么，几句话。
+    when: 一步结束、用户拍板、实验出了意外结果之后。
+    write: 可以改写
+    load: auto
+    limit: 10 行以内
+  - id: reference
+    name: 参考
+    scope: project
+    path: memory/reference.md
+    format: 工作中得知的外部信息去哪找，每条一行：是什么、在哪。比如用户提到的数据集、代码仓库、服务器。
+    when: 用户告诉你、或者自己找到一个以后还会用的信息来源时。
+    write: 可以改写
+    load: on_demand
+  - id: user
+    name: 用户
+    scope: cross
+    path: ~/memory/user.md
+    format: 用户的研究方向、熟悉的方法、喜欢怎么做。
+    when: 了解到用户的新情况时。
+    write: 可以改写
+    load: auto
+    limit: 20 行以内
+  - id: feedback
+    name: 反馈
+    scope: cross
+    path: ~/memory/feedback.md
+    format: 用户纠正过、确认过的做法，每条一行，附原因。
+    when: 用户纠正你，或者确认了某种不明显的做法时。
+    write: 可以改写
+    load: auto
+    limit: 30 行以内
+outputs:
+  - id: paper
+    name: 论文初稿
+    kind: final
+    skill: writing
+    path: outputs/paper/
+    when: 论文写作这一步。
+    format: 论文正文、图表和参考文献。
+    write: versioned
+    confirm: true
+  - id: claims
+    name: 论断清单
+    kind: final
+    path: outputs/claims.md
+    when: 实验设计时列出；结果分析后更新每条的状态。
+    format: 每条论断标明已支撑或撑不住，附证据位置。
+    write: edit
+  - id: experiments
+    name: 实验记录
+    kind: final
+    path: records/experiments.jsonl
+    when: 跑实验前登记配置，跑完追加结果。
+    format: 每行一次实验：代码版本、超参、数据、随机种子、结果、日志位置。照着能复现。
+    write: append
+  - id: final_report
+    name: 最终报告
+    kind: final
+    path: outputs/final-report.md
+    when: 项目结束时。
+    format: 做了什么、结论、局限、下一步建议。
+    write: versioned
+  - id: related_work
+    name: 相关工作表
+    kind: interim
+    skill: survey
+    path: outputs/survey/related-work.md
+    when: 调研定位这一步。
+    format: 相关工作的方法、数据、结论、局限，以及几个候选研究问题。
+    write: versioned
+    confirm: true
+  - id: proposal
+    name: 研究提案
+    kind: interim
+    skill: idea
+    path: outputs/idea/proposal.md
+    when: 核心想法这一步。
+    format: 问题、假设、新在哪、怎么验证、风险。
+    write: versioned
+  - id: derisk_report
+    name: 验证报告
+    kind: interim
+    skill: derisk
+    path: outputs/derisk/report.md
+    when: 快速验证这一步。
+    format: 快速实验的结果，以及继续还是放弃。
+    write: versioned
+  - id: design
+    name: 实验方案
+    kind: interim
+    skill: experiment-design
+    path: outputs/design/plan.md
+    when: 实验设计这一步。
+    format: 每条论断对应的实验，跑之前定好什么结果算支撑。
+    write: versioned
+    confirm: true
+  - id: analysis
+    name: 分析报告
+    kind: interim
+    skill: analysis
+    path: outputs/analysis/report.md
+    when: 结果分析这一步。
+    format: 逐条论断：撑不撑得住，证据是什么。
+    write: versioned
+  - id: references
+    name: 参考文献库
+    kind: interim
+    path: outputs/paper/refs.bib
+    when: 每次引用一篇文献时。
+    format: 只收检索到、核实过的引用。
+    write: append
+  - id: lesson_proposals
+    name: 经验提议
+    kind: interim
+    skill: review
+    path: outputs/lesson-proposals/
+    when: 每次复盘之后。
+    format: 每条一个文件：规则、为什么、怎么用，注明来自哪个项目、哪次实验。成功和失败都记。
+    write: edit
+    confirm: true
+  - id: attempts
+    name: 尝试与失败
+    kind: record
+    path: records/attempts.md
+    when: 一个做法试过没成的时候。
+    format: 试过什么、为什么没成，结果引用实验记录里的编号。
+    write: append
+  - id: searches
+    name: 检索存档
+    kind: record
+    path: records/searches/
+    when: 每次检索文献之后。
+    format: 检索词和返回的结果。引用只能来自这里。
+    write: append
+provided_by_system:
+  - id: time_location
+    name: 时间与位置
+    belongs: environment
+    where: per_message
+    explain: 当前日期、时间和时区。判断截止时间、写日期时用它，不要自己猜。
+    sample: 2026-10-05 21:30（Asia/Shanghai）
+  - id: env_snapshot
+    name: 环境快照
+    belongs: environment
+    where: session_start
+    explain: 这次开工时会变的情况：GPU 空闲多少、代码版本。计划实验规模、写实验记录时用它。
+    sample: GPU 空闲 2 / 2；代码版本 a1b2c3d
+  - id: mode
+    name: 模式
+    belongs: collab
+    where: per_message
+    explain: 当前是自主推进还是逐步确认。逐步确认时，每做完一步先等用户回复。
+    sample: 自主推进
+  - id: current_task
+    name: 当前任务
+    belongs: process
+    where: per_message
+    explain: 规划里正在做的那一步和那条待办。手上的事和它对不上时，先停下来想想是不是偏了。
+    sample: 实验执行 › 重跑第二组消融实验
+  - id: plan_overview
+    name: 规划全貌
+    belongs: process
+    where: session_start
+    explain: 七步各自的状态，以及当前这一步的待办。以它为准，不要凭印象。
+    sample: 调研定位 做完；核心想法 做完；快速验证 做完；实验设计 做完；实验执行 在做（待办 3/5）；结果分析 待做；论文写作 待做
+  - id: budget
+    name: 预算用量
+    belongs: guarantees
+    where: per_message
+    explain: 已用和剩下的 token、算力和时间。快用完时先保存状态，再向用户汇报。
+    sample: token 已用 120k / 500k；算力已用 3.2 / 10 GPU 小时；已用 2 天 / 7 天
+not_in_prompt: {}
+not_for_agent:
+  guarantees: guarantees.md
+  cases: cases.md
